@@ -1,5 +1,7 @@
 export type MediaSource =
   | { kind: "youtube"; url: string; youtubeId?: string }
+  | { kind: "gdrive"; url: string }
+  | { kind: "onedrive"; url: string }
   | { kind: "upload"; fileId: string; contentType?: string };
 
 export interface Contributor {
