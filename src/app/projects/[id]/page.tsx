@@ -3,8 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { getProjectById, getAdjacentProjects } from "../../../lib/projects";
 import TextPressure from "../../../components/ui/TextPressure";
-import { TextGenerateEffect } from "../../../components/ui/text-generate-effect";
 import type { Project, MediaSource } from "../../../lib/types";
+import TrueFocus from "../../../components/TrueFocus";
 function extractYouTubeId(input: string | undefined | null): string | null {
   if (!input) return null;
   const trimmed = input.trim();
@@ -63,11 +63,49 @@ export default async function ProjectDetail(context: { params: Promise<{ id: str
           />
         </div>
         <div className="block md:hidden w-full text-center">
-          <TextGenerateEffect words={project.title} wordColor="#000" wordSize="3xl" filter={false} duration={1} />
+          <TrueFocus sentence={project.title} borderColor="blue" blurAmount={2}/>
         </div>
       </section>
 
       <div className="mx-auto max-w-4xl p-6">
+        {/* Project Information Header */}
+        <div className="mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">{project.title}</h1>
+              {project.shortDescription && (
+                <p className="text-lg text-gray-600 dark:text-gray-300">{project.shortDescription}</p>
+              )}
+            </div>
+            {/* Project Dates */}
+            <div className="flex flex-col sm:items-end gap-2">
+              {project.startDate && (
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  <span className="font-medium">Start Date:</span> {new Date(project.startDate).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </div>
+              )}
+              {project.endDate && (
+                <div className="text-sm text-gray-500 dark:text-gray-400">
+                  <span className="font-medium">End Date:</span> {new Date(project.endDate).toLocaleDateString('en-US', { 
+                    year: 'numeric', 
+                    month: 'long', 
+                    day: 'numeric' 
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Project Description */}
+        <div className="mb-8">
+          <article className="prose prose-zinc dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: project.description }} />
+        </div>
+
         {/* Project Video (YouTube, Google Drive, OneDrive) */}
         {project.media && project.media.kind === "youtube" && project.media.url ? (
           (() => {
@@ -76,7 +114,7 @@ export default async function ProjectDetail(context: { params: Promise<{ id: str
               return (
                 <div className="aspect-video w-full mb-8">
                   <iframe
-                    className="w-full h-full"
+                    className="w-full h-full rounded-lg shadow-lg"
                     src={`https://www.youtube.com/embed/${videoId}`}
                     title={project.title}
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -95,7 +133,7 @@ export default async function ProjectDetail(context: { params: Promise<{ id: str
         {project.media && project.media.kind !== "youtube" && project.media.kind !== "upload" && "url" in project.media ? (
           <div className="aspect-video w-full mb-8">
             <iframe
-              className="w-full h-full"
+              className="w-full h-full rounded-lg shadow-lg"
               src={(() => {
                 const url = (project.media as Extract<MediaSource, { url: string }>).url;
                 if (url.includes("drive.google.com")) return url.replace("/view", "/preview");
@@ -111,16 +149,16 @@ export default async function ProjectDetail(context: { params: Promise<{ id: str
         {/* Showcase Photos Gallery */}
         {project.showcasePhotos && project.showcasePhotos.length > 0 && (
           <div className="mb-8">
-            <h2 className="text-xl font-semibold mb-2">Showcase Photos</h2>
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">Showcase Photos</h1>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
               {project.showcasePhotos.map((url: string, idx: number) => (
                 <Image
                   key={idx}
                   src={url}
                   alt={`Showcase ${idx + 1}`}
-                  className="w-full h-48 object-cover rounded-md border"
-                  width={400}
-                  height={192}
+                  className="w-full h-64 sm:h-80 object-cover rounded-lg border shadow-md"
+                  width={600}
+                  height={320}
                   loading="lazy"
                 />
               ))}
@@ -128,13 +166,18 @@ export default async function ProjectDetail(context: { params: Promise<{ id: str
           </div>
         )}
 
+        {/* Project Poster */}
         {project.poster ? (
           <div className="w-full mb-8">
-            <Image src={project.poster} alt={`${project.title} poster`} className="w-full h-auto rounded-md object-contain" width={800} height={400} />
+            <Image 
+              src={project.poster} 
+              alt={`${project.title} poster`} 
+              className="w-full h-auto rounded-lg shadow-lg object-contain" 
+              width={800} 
+              height={400} 
+            />
           </div>
         ) : null}
-
-        <article className="prose prose-zinc dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: project.description }} />
 
         {Array.isArray(project.techStack) && project.techStack.length ? (
           <div className="mt-6">
