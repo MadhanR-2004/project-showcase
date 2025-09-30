@@ -28,12 +28,24 @@ export const authOptions: NextAuthOptions = {
         username: { label: "Email", type: "text" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(credentials, req) {
         if (!credentials) return null;
         const user = await findUserByEmail(credentials.username);
         if (!user) return null;
         const ok = await verifyPassword(credentials.password, user.passwordHash);
         if (!ok) return null;
+
+        // Determine login tab from referer or custom header
+        let loginTab = "";
+        if (req && req.headers && req.headers.referer) {
+          const url = new URL(req.headers.referer);
+          loginTab = url.searchParams.get("tab") || "";
+        }
+
+        // Only allow contributors to log in via contributor tab, admins via admin tab
+        if (loginTab === "contributor" && user.role !== "contributor") return null;
+        if (loginTab === "admin" && user.role !== "admin") return null;
+
         return { id: user._id, name: user.name || user.email, email: user.email, role: user.role } as ExtendedUser;
       },
     }),
