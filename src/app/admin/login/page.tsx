@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function AdminLogin() {
   const router = useRouter();
@@ -41,6 +42,11 @@ export default function AdminLogin() {
         />
         {error ? <p className="text-red-600 text-sm">{error}</p> : null}
         <button type="submit" className="w-full rounded-md bg-black text-white py-2">Sign In</button>
+        <div className="text-center">
+          <Link href="/admin/forgot-password" className="text-blue-600 hover:text-blue-500 text-sm">
+            Forgot Password?
+          </Link>
+        </div>
       </form>
     </div>
   );

@@ -73,6 +73,20 @@ export default function EditContributorPage() {
       });
   }, [id]);
 
+  // Real-time email validation with debouncing
+  useEffect(() => {
+    if (!contributor?.email?.trim()) {
+      setEmailUnique(true);
+      return;
+    }
+
+    const timeoutId = setTimeout(() => {
+      checkEmailUnique(contributor.email.trim());
+    }, 500); // 500ms debounce
+
+    return () => clearTimeout(timeoutId);
+  }, [contributor?.email]);
+
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     if (!contributor) return;
     // Always set required fields to a string (never undefined)
@@ -84,6 +98,7 @@ export default function EditContributorPage() {
   }
 
   const [emailUnique, setEmailUnique] = useState(true);
+  const [emailChecking, setEmailChecking] = useState(false);
 
   async function uploadToGridFS(file: File) {
     const formData = new FormData();
@@ -99,10 +114,20 @@ export default function EditContributorPage() {
 
   async function checkEmailUnique(email: string) {
     if (!email) return true;
-    const res = await fetch(`/api/contributors?email=${encodeURIComponent(email)}`);
-    const data = await res.json();
-    // Allow current contributor's own email
-    return !(data.contributors && data.contributors.some((c: Contributor) => c.email === email && c._id !== id));
+    setEmailChecking(true);
+    try {
+      const res = await fetch(`/api/contributors?email=${encodeURIComponent(email)}`);
+      const data = await res.json();
+      // Allow current contributor's own email
+      const isUnique = !(data.contributors && data.contributors.some((c: Contributor) => c.email === email && c._id !== id));
+      setEmailUnique(isUnique);
+      return isUnique;
+    } catch (error) {
+      console.error('Error checking email uniqueness:', error);
+      return true; // Assume unique on error
+    } finally {
+      setEmailChecking(false);
+    }
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -176,8 +201,38 @@ export default function EditContributorPage() {
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Email <span className="text-red-600">*</span></label>
-          <input className={`w-full border rounded-md px-3 py-2 ${!emailUnique ? 'border-red-500' : ''}`} name="email" value={contributor.email || ""} onChange={handleChange} required type="email" />
-          {!emailUnique && <p className="text-red-600 text-xs">Email must be unique</p>}
+          <div className="relative">
+            <input 
+              className={`w-full border rounded-md px-3 py-2 pr-10 ${!emailUnique ? 'border-red-500' : emailUnique && contributor.email ? 'border-green-500' : ''}`} 
+              name="email" 
+              value={contributor.email || ""} 
+              onChange={handleChange} 
+              required 
+              type="email" 
+              placeholder="Enter email address"
+            />
+            {emailChecking && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+              </div>
+            )}
+            {!emailChecking && contributor.email && emailUnique && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <svg className="h-4 w-4 text-green-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+              </div>
+            )}
+            {!emailChecking && contributor.email && !emailUnique && (
+              <div className="absolute right-3 top-1/2 transform -translate-y-1/2">
+                <svg className="h-4 w-4 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </div>
+            )}
+          </div>
+          {!emailUnique && <p className="text-red-600 text-xs mt-1">This email is already in use</p>}
+          {emailUnique && contributor.email && !emailChecking && <p className="text-green-600 text-xs mt-1">Email is available</p>}
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Avatar</label>

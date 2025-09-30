@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createContributor, listContributors, ContributorDoc } from "../../../lib/contributors";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const email = searchParams.get('email');
+  
   const items = await listContributors();
+  
+  // If email parameter is provided, filter by email for uniqueness check
+  if (email) {
+    const filtered = items.filter(c => c.email === email);
+    return NextResponse.json({ contributors: filtered });
+  }
+  
   return NextResponse.json({ contributors: items });
 }
 

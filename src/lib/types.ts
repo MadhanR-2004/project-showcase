@@ -28,6 +28,8 @@ export interface Project {
   media?: MediaSource;
   showcasePhotos?: Array<string>;
   contributors?: Array<Contributor & { projectRole?: "mentor" | "team-leader" | "team-member" | "project-head" }>;
+  startDate: string; // mandatory field
+  endDate: string; // mandatory field
   createdAt?: string;
   updatedAt?: string;
   isPublished?: boolean;

@@ -16,6 +16,8 @@ export async function POST(req: NextRequest) {
     { key: 'title', label: 'Title' },
     { key: 'shortDescription', label: 'Short Description' },
     { key: 'description', label: 'Description' },
+    { key: 'startDate', label: 'Start Date' },
+    { key: 'endDate', label: 'End Date' },
     { key: 'poster', label: 'Poster Image' },
   ];
   for (const r of required) {
