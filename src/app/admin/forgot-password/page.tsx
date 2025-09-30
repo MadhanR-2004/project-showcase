@@ -8,6 +8,8 @@ export default function ForgotPasswordPage() {
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [showNew, setShowNew] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [step, setStep] = useState<"email" | "otp" | "password">("email");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -246,32 +248,38 @@ export default function ForgotPasswordPage() {
               <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700">
                 New Password
               </label>
-              <input
-                id="newPassword"
-                name="newPassword"
-                type="password"
-                required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Enter new password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
+              <div className="relative">
+                <input
+                  id="newPassword"
+                  name="newPassword"
+                  type={showNew ? "text" : "password"}
+                  required
+                  className="mt-1 appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                  placeholder="Enter new password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+                <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-zinc-600" onClick={() => setShowNew(!showNew)}>{showNew ? "Hide" : "Show"}</button>
+              </div>
             </div>
 
             <div>
               <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700">
                 Confirm Password
               </label>
-              <input
-                id="confirmPassword"
-                name="confirmPassword"
-                type="password"
-                required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Confirm new password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
+              <div className="relative">
+                <input
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  type={showConfirm ? "text" : "password"}
+                  required
+                  className="mt-1 appearance-none relative block w-full px-3 py-2 pr-10 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                  placeholder="Confirm new password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+                <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-sm text-zinc-600" onClick={() => setShowConfirm(!showConfirm)}>{showConfirm ? "Hide" : "Show"}</button>
+              </div>
             </div>
 
             {message && (

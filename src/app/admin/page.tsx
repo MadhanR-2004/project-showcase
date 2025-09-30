@@ -25,7 +25,14 @@ const userHasAdminRole = (user: unknown): user is SessionUserWithRole => {
 
 export default function AdminTabsPage() {
   const { data: session, status } = useSession();
-  const [tab, setTab] = useState<"projects" | "contributors" | "create-admin">("projects");
+  const [tab, setTab] = useState<"projects" | "contributors" | "create-admin">(() => {
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      const t = url.searchParams.get("tab");
+      if (t === "contributors" || t === "projects" || t === "create-admin") return t;
+    }
+    return "projects";
+  });
 
   if (status === "loading") return null;
   if (!session || !userHasAdminRole(session.user) || session.user.role !== "admin") {

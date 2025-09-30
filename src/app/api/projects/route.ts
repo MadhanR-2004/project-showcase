@@ -1,10 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
 import { listProjects, createProject } from "../../../lib/projects";
+import { getDb } from "../../../lib/mongodb";
+import { Project } from "../../../lib/types";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const limit = Number(searchParams.get("limit") ?? 24);
   const skip = Number(searchParams.get("skip") ?? 0);
+  const contributorId = searchParams.get("contributorId");
+
+  // If contributorId is provided, filter directly in DB for associated projects
+  if (contributorId) {
+    const db = await getDb();
+    const cursor = db
+      .collection<Project>("projects")
+      .find({ "contributors.id": contributorId, isPublished: { $ne: false } })
+      .sort({ createdAt: 1 })
+      .skip(skip)
+      .limit(limit);
+    const docs = await cursor.toArray();
+    return NextResponse.json({ projects: docs.map((d) => ({ ...d, _id: d._id?.toString?.() ?? d._id })) });
+  }
+
   const projects = await listProjects(limit, skip);
   return NextResponse.json({ projects });
 }

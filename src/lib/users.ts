@@ -6,7 +6,7 @@ export interface UserDoc {
   _id?: string;
   email: string;
   passwordHash: string;
-  role: "admin" | "editor";
+  role: "admin" | "editor" | "contributor";
   name?: string;
   createdAt?: string;
   updatedAt?: string;

@@ -6,12 +6,20 @@ import {TextGenerateEffect} from "../components/ui/text-generate-effect";
 export function SparklesPreview() {
   return (
     <div className="h-screen w-full bg-black flex flex-col items-center justify-center overflow-hidden relative">
-      <Link
-        href="/admin"
-        className="absolute top-4 right-4 inline-flex items-center rounded-full bg-white/90 text-black px-4 py-2 text-xs font-semibold hover:bg-white transition-colors"
-      >
-        Admin
-      </Link>
+      <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
+        <Link
+          href="/admin/login"
+          className="inline-flex items-center rounded-full bg-white/90 text-black px-4 py-2 text-xs font-semibold hover:bg-white transition-colors"
+        >
+          Admin
+        </Link>
+        <Link
+          href="/contributor/login"
+          className="inline-flex items-center rounded-full bg-white/80 text-black px-4 py-2 text-xs font-semibold hover:bg-white transition-colors"
+        >
+          Contributor
+        </Link>
+      </div>
       <div>
       <h1 className="md:text-5xl text-3xl lg:text-5xl font-bold text-center text-white relative z-20">
         Department of Information Technology

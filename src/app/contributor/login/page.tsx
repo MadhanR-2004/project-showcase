@@ -4,7 +4,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-export default function AdminLogin() {
+export default function ContributorLogin() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -17,18 +17,16 @@ export default function AdminLogin() {
     const res = await signIn("credentials", {
       username: email,
       password,
-      redirect: true,
-      callbackUrl: "/admin",
+      redirect: false,
     });
-    // In redirect mode, NextAuth handles navigation. If it returns, show error.
-    // eslint-disable-next-line @typescript-eslint/no-unused-expressions
-    res && (res as unknown as { error?: string }).error && setError("Invalid credentials");
+    if (res?.ok) router.push("/contributor/dashboard");
+    else setError("Invalid credentials");
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6">
       <form onSubmit={onSubmit} className="w-full max-w-sm space-y-4">
-        <h1 className="text-2xl font-semibold">Admin Login</h1>
+        <h1 className="text-2xl font-semibold">Contributor Login</h1>
         <input
           type="email"
           placeholder="Email"
@@ -56,7 +54,7 @@ export default function AdminLogin() {
         {error ? <p className="text-red-600 text-sm">{error}</p> : null}
         <button type="submit" className="w-full rounded-md bg-black text-white py-2">Sign In</button>
         <div className="text-center">
-          <Link href="/admin/forgot-password" className="text-blue-600 hover:text-blue-500 text-sm">
+          <Link href="/contributor/forgot-password" className="text-blue-600 hover:text-blue-500 text-sm">
             Forgot Password?
           </Link>
         </div>

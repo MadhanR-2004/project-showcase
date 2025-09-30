@@ -111,3 +111,38 @@ export async function sendOTP(email: string, otp: string) {
     }
   }
 }
+
+export async function sendContributorCredentials(email: string, name: string, password: string) {
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject: 'Your Contributor Account - Project Showcase',
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Welcome to Project Showcase</h2>
+        <p>Hello ${name || email},</p>
+        <p>Your contributor account has been created. Use the following credentials to log in:</p>
+        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Password:</strong> <code style="background-color: #e9ecef; padding: 8px 12px; border-radius: 5px; font-size: 16px; font-weight: bold; letter-spacing: 1px;">${password}</code></p>
+        </div>
+        <p>You can access the contributor dashboard at: <a href="${process.env.NEXTAUTH_URL}/contributor/login">${process.env.NEXTAUTH_URL}/contributor/login</a></p>
+        <p style="margin-top:16px"><strong>Important:</strong> Please change your password after first login.</p>
+        <p>Best regards,<br/>Project Showcase Team</p>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    try {
+      const altTransporter = createOutlookTransporter();
+      await altTransporter.sendMail(mailOptions);
+      return { success: true };
+    } catch (altError) {
+      return { success: false, error: altError instanceof Error ? altError.message : 'Unknown error' };
+    }
+  }
+}

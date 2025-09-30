@@ -16,12 +16,14 @@ export default function ContributorsAdminPage() {
   const { data: session, status } = useSession();
   const [items, setItems] = useState<Contributor[]>([]);
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [profileUrl, setProfileUrl] = useState("");
   const [contributorType, setContributorType] = useState<"student" | "staff" | "">("");
   const [branch, setBranch] = useState<"IT" | "ADS" | "">("");
   const [staffTitle, setStaffTitle] = useState<"Assistant Professor" | "Professor" | "Head of Department" | "Assistant Head of Department" | "">("");
+  const [message, setMessage] = useState<{ type: 'success' | 'warning' | 'error'; text: string } | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -56,6 +58,7 @@ export default function ContributorsAdminPage() {
 
   async function addContributor(e: React.FormEvent) {
     e.preventDefault();
+    setMessage(null);
     let avatar = avatarUrl;
     if (avatarFile) {
       const up = await uploadMedia(avatarFile);
@@ -64,24 +67,39 @@ export default function ContributorsAdminPage() {
     const res = await fetch("/api/contributors", {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name, avatarUrl: avatar, profileUrl, contributorType: contributorType || undefined, branch: branch || undefined, staffTitle: staffTitle || undefined }),
+      body: JSON.stringify({ name, email, avatarUrl: avatar, profileUrl, contributorType: contributorType || undefined, branch: branch || undefined, staffTitle: staffTitle || undefined }),
     });
-    const created = await res.json();
+    const data = await res.json();
+    if (!res.ok) {
+      setMessage({ type: 'error', text: data.error || 'Failed to add contributor' });
+      return;
+    }
+    const created = data.contributor || data; // support both shapes
     setItems([created, ...items]);
     setName("");
+    setEmail("");
     setAvatarUrl("");
     setProfileUrl("");
     setContributorType("");
     setBranch("");
     setStaffTitle("");
     setAvatarFile(null);
+    if (typeof window !== "undefined") alert(data.warning ? 'Contributor created but email could not be sent. Please notify manually.' : `Contributor created and credentials emailed to ${email}.`);
+    // Redirect to Contributors tab on admin dashboard
+    if (typeof window !== "undefined") window.location.href = "/admin?tab=contributors";
   }
 
   return (
     <div className="min-h-screen p-6 max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold mb-6">Contributors</h1>
+      {message ? (
+        <div className={`mb-4 rounded-md px-3 py-2 text-sm ${message.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : message.type === 'warning' ? 'bg-yellow-50 text-yellow-800 border border-yellow-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+          {message.text}
+        </div>
+      ) : null}
       <form onSubmit={addContributor} className="space-y-3 mb-8">
         <input className="w-full border rounded-md px-3 py-2" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} />
+        <input className="w-full border rounded-md px-3 py-2" placeholder="Email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
         <input className="w-full border rounded-md px-3 py-2" placeholder="Avatar URL (optional)" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} />
         <div className="flex items-center gap-3">
           <input type="file" accept="image/*" onChange={(e) => setAvatarFile(e.target.files?.[0] ?? null)} />

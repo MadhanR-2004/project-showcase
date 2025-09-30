@@ -20,7 +20,7 @@ interface ExtendedSession {
   };
 }
 
-const authOptions: NextAuthOptions = {
+export const authOptions: NextAuthOptions = {
   providers: [
     Credentials({
       name: "Credentials",
