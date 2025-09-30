@@ -46,21 +46,10 @@ export default async function ProjectDetail(context: { params: Promise<{ id: str
 
   return (
     <div className="min-h-screen">
-      <section className="relative h-72 w-full bg-white flex items-center justify-center">
+      <section className="relative h-72 w-full bg-white flex items-center justify-center md:mt-16">
         {/* Show TextPressure on md+ screens, fallback text on small screens */}
         <div className="hidden md:block w-full h-full">
-          <TextPressure
-            text={project.title}
-            flex={true}
-            alpha={false}
-            stroke={false}
-            width={true}
-            weight={true}
-            italic={true}
-            textColor="#000000ff"
-            strokeColor="#ff0000"
-            minFontSize={20}
-          />
+        <TrueFocus sentence={project.title} borderColor="blue" blurAmount={2}/>
         </div>
         <div className="block md:hidden w-full text-center">
           <TrueFocus sentence={project.title} borderColor="blue" blurAmount={2}/>
