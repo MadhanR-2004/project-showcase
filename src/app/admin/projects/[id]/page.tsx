@@ -28,8 +28,6 @@ export default function EditProjectPage() {
   const [title, setTitle] = useState("");
   const [shortDescription, setShortDescription] = useState("");
   const [description, setDescription] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
   const [techStack, setTechStack] = useState<string[]>([]);
   const [techInput, setTechInput] = useState("");
   const [posterUrl, setPosterUrl] = useState("");
@@ -63,8 +61,6 @@ export default function EditProjectPage() {
         setTitle(data.title || "");
         setShortDescription(data.shortDescription || "");
         setDescription(data.description || "");
-        setStartDate(data.startDate || "");
-        setEndDate(data.endDate || "");
         setTechStack(data.techStack || []);
         setPosterUrl(data.poster || "");
         setThumbnailUrl(data.thumbnail || "");
@@ -217,8 +213,6 @@ export default function EditProjectPage() {
         title,
         shortDescription,
         description,
-        startDate,
-        endDate,
         techStack,
         poster,
         thumbnail,
@@ -267,28 +261,6 @@ export default function EditProjectPage() {
         <div>
           <label className="block text-sm font-medium mb-1">Description <span className="text-red-600">*</span></label>
           <textarea className="w-full border rounded-md px-3 py-2 min-h-[100px]" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Enter project description (plain text)" />
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Start Date <span className="text-red-600">*</span></label>
-            <input
-              type="date"
-              className="w-full border rounded-md px-3 py-2"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              required
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">End Date <span className="text-red-600">*</span></label>
-            <input
-              type="date"
-              className="w-full border rounded-md px-3 py-2"
-              value={endDate}
-              onChange={(e) => setEndDate(e.target.value)}
-              required
-            />
-          </div>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Poster Image <span className="text-red-600">*</span></label>

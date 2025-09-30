@@ -54,7 +54,7 @@ async function handleDeleteFile(url: string) {
     alert(`Failed to delete file: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -73,9 +73,13 @@ export default function AdminCreateProject() {
   const [posterUrl, setPosterUrl] = useState("");
   const [posterUploading, setPosterUploading] = useState(false);
   const [posterError, setPosterError] = useState<string | null>(null);
+  const posterFileRef = useRef<HTMLInputElement | null>(null);
+  const [posterFileKey, setPosterFileKey] = useState(0);
   const [thumbnailUrl, setThumbnailUrl] = useState("");
   const [thumbnailUploading, setThumbnailUploading] = useState(false);
   const [thumbnailError, setThumbnailError] = useState<string | null>(null);
+  const thumbnailFileRef = useRef<HTMLInputElement | null>(null);
+  const [thumbnailFileKey, setThumbnailFileKey] = useState(0);
   // Video links
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [youtubeValid, setYoutubeValid] = useState(true);
@@ -83,6 +87,7 @@ export default function AdminCreateProject() {
   const [onedriveUrl, setOnedriveUrl] = useState("");
   // Showcase photos: array of { url: string, file: File | null, uploading?: boolean, error?: string }
   const [photos, setPhotos] = useState<{ url: string; file: File | null; uploading?: boolean; error?: string }[]>([{ url: "", file: null }]);
+  const photoFileRefs = useRef<Array<HTMLInputElement | null>>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [allContributors, setAllContributors] = useState<{ _id: string; name: string; avatarUrl?: string; profileUrl?: string }[]>([]);
@@ -241,8 +246,10 @@ export default function AdminCreateProject() {
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Poster Image <span className="text-red-600">*</span></label>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
             <input
+              key={posterFileKey}
+              ref={posterFileRef}
               type="file"
               accept="image/*"
               onChange={async (e) => {
@@ -259,6 +266,11 @@ export default function AdminCreateProject() {
                   } else {
                     setPosterError("Upload failed");
                   }
+                  // Clear failed file selection
+                  if (posterFileRef.current) {
+                    posterFileRef.current.value = "";
+                  }
+                  setPosterFileKey(k => k + 1);
                 } finally {
                   setPosterUploading(false);
                 }
@@ -266,17 +278,21 @@ export default function AdminCreateProject() {
               disabled={posterUploading}
             />
             {posterUploading && <span className="text-xs text-zinc-500">Uploading...</span>}
-            {posterUrl && <Image src={posterUrl} alt="Poster" width={48} height={48} className="w-12 h-12 object-cover rounded border" />}
+            {posterUrl && <Image src={posterUrl} alt="Poster" width={48} height={48} className="w-12 h-12 object-cover rounded border" unoptimized />}
             {posterUrl && (
-              <button type="button" className="text-red-600 ml-2" onClick={async () => { await handleDeleteFile(posterUrl); setPosterUrl(""); }}>Delete</button>
+              <button type="button" className="text-red-600 sm:ml-2" onClick={async () => { await handleDeleteFile(posterUrl); setPosterUrl(""); setPosterFileKey(k => k + 1); }}>Delete</button>
             )}
             {posterError && <span className="text-xs text-red-600">{posterError}</span>}
+            <span className="text-xs text-zinc-500 block sm:inline sm:mx-1">or</span>
+            <input className="border rounded-md px-3 py-2 w-full sm:flex-1" placeholder="Poster URL (optional)" value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)} />
           </div>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Thumbnail (for lists/cards)</label>
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
             <input
+              key={thumbnailFileKey}
+              ref={thumbnailFileRef}
               type="file"
               accept="image/*"
               onChange={async (e) => {
@@ -293,6 +309,11 @@ export default function AdminCreateProject() {
                   } else {
                     setThumbnailError("Upload failed");
                   }
+                  // Clear failed file selection
+                  if (thumbnailFileRef.current) {
+                    thumbnailFileRef.current.value = "";
+                  }
+                  setThumbnailFileKey(k => k + 1);
                 } finally {
                   setThumbnailUploading(false);
                 }
@@ -300,13 +321,13 @@ export default function AdminCreateProject() {
               disabled={thumbnailUploading}
             />
             {thumbnailUploading && <span className="text-xs text-zinc-500">Uploading...</span>}
-            {thumbnailUrl && <Image src={thumbnailUrl} alt="Thumbnail" width={48} height={48} className="w-12 h-12 object-cover rounded border" />}
+            {thumbnailUrl && <Image src={thumbnailUrl} alt="Thumbnail" width={48} height={48} className="w-12 h-12 object-cover rounded border" unoptimized />}
             {thumbnailUrl && (
-              <button type="button" className="text-red-600 ml-2" onClick={async () => { await handleDeleteFile(thumbnailUrl); setThumbnailUrl(""); }}>Delete</button>
+              <button type="button" className="text-red-600 sm:ml-2" onClick={async () => { await handleDeleteFile(thumbnailUrl); setThumbnailUrl(""); setThumbnailFileKey(k => k + 1); }}>Delete</button>
             )}
             {thumbnailError && <span className="text-xs text-red-600">{thumbnailError}</span>}
-            <span className="text-xs text-zinc-500">or</span>
-            <input className="border rounded-md px-3 py-2 flex-1" placeholder="Thumbnail URL (optional)" value={thumbnailUrl} onChange={(e) => setThumbnailUrl(e.target.value)} />
+            <span className="text-xs text-zinc-500 block sm:inline sm:mx-1">or</span>
+            <input className="border rounded-md px-3 py-2 w-full sm:flex-1" placeholder="Thumbnail URL (optional)" value={thumbnailUrl} onChange={(e) => setThumbnailUrl(e.target.value)} />
           </div>
         </div>
         <div>
@@ -468,9 +489,9 @@ export default function AdminCreateProject() {
           <label className="block text-sm font-medium mb-1">Showcase Photos <span className="text-red-600">*</span></label>
           <ul className="space-y-2 mb-2">
             {photos.map((p, idx) => (
-              <li key={idx} className="flex gap-2 items-center">
+              <li key={idx} className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
                 <input
-                  className="border rounded-md px-3 py-2 flex-1"
+                  className="border rounded-md px-3 py-2 w-full sm:flex-1"
                   placeholder="Photo URL (optional)"
                   value={p.url}
                   onChange={e => {
@@ -480,8 +501,9 @@ export default function AdminCreateProject() {
                   }}
                   disabled={!!p.file || !!p.uploading}
                 />
-                <span className="text-xs text-zinc-500">or</span>
+                <span className="text-xs text-zinc-500 block sm:inline sm:mx-1 text-center">or</span>
                 <input
+                  ref={el => { photoFileRefs.current[idx] = el; }}
                   type="file"
                   accept="image/*"
                   onChange={async e => {
@@ -496,7 +518,11 @@ export default function AdminCreateProject() {
                       const up = await uploadToGridFS(file);
                       setPhotos(prev => prev.map((p, i) => i === idx ? { url: `/api/media/${up.fileId}`, file: null, uploading: false } : p));
                     } catch {
-                      setPhotos(prev => prev.map((p, i) => i === idx ? { ...p, uploading: false, error: "Upload failed" } : p));
+                      // Reset failed state and clear file/url so the filename is not shown
+                      setPhotos(prev => prev.map((p, i) => i === idx ? { url: "", file: null, uploading: false, error: "Upload failed" } : p));
+                      if (photoFileRefs.current[idx]) {
+                        photoFileRefs.current[idx]!.value = "";
+                      }
                     }
                   }}
                   disabled={!!p.url || !!p.uploading}
@@ -505,14 +531,14 @@ export default function AdminCreateProject() {
                   <span className="w-12 h-12 flex items-center justify-center"><svg className="animate-spin h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" /></svg></span>
                 )}
                 {p.url && !p.uploading && (
-                  <Image src={p.url} alt="Showcase" width={48} height={48} className="w-12 h-12 object-cover rounded border" />
+                  <Image src={p.url} alt="Showcase" width={48} height={48} className="w-12 h-12 object-cover rounded border" unoptimized />
                 )}
                 {p.url && !p.uploading && (
-                  <button type="button" className="text-red-600 ml-2" onClick={async () => { await handleDeleteFile(p.url); setPhotos(photos.length === 1 ? [{ url: "", file: null }] : photos.filter((_, i) => i !== idx)); }}>Delete</button>
+                  <button type="button" className="text-red-600 sm:ml-2" onClick={async () => { await handleDeleteFile(p.url); setPhotos(photos.length === 1 ? [{ url: "", file: null }] : photos.filter((_, i) => i !== idx)); if (photoFileRefs.current[idx]) { photoFileRefs.current[idx]!.value = ""; } }}>Delete</button>
                 )}
                 <button
                   type="button"
-                  className="text-zinc-400 hover:text-red-600 text-xl ml-2"
+                  className="text-zinc-400 hover:text-red-600 text-xl sm:ml-2"
                   title="Remove"
                   onClick={() => setPhotos(photos.length === 1 ? [{ url: "", file: null }] : photos.filter((_, i) => i !== idx))}
                   disabled={photos.length === 1 || !!p.uploading}

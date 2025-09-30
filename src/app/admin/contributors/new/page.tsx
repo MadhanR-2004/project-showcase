@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 
 // Delete file from GridFS by file URL
 async function handleDeleteFile(url: string) {
@@ -40,7 +40,15 @@ export default function AddContributorPage() {
   const router = useRouter();
   const [name, setName] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
+  const [avatarUploading, setAvatarUploading] = useState(false);
+  const [avatarError, setAvatarError] = useState<string | null>(null);
+  const avatarFileRef = useRef<HTMLInputElement | null>(null);
+  const [avatarFileKey, setAvatarFileKey] = useState(0);
   const [profileUrl, setProfileUrl] = useState("");
+  const [profileUploading, setProfileUploading] = useState(false);
+  const [profileError, setProfileError] = useState<string | null>(null);
+  const profileFileRef = useRef<HTMLInputElement | null>(null);
+  const [profileFileKey, setProfileFileKey] = useState(0);
   const [contributorType, setContributorType] = useState("");
   const [branch, setBranch] = useState("");
   const [staffTitle, setStaffTitle] = useState("");
@@ -48,8 +56,7 @@ export default function AddContributorPage() {
   const [yearOfPassing, setYearOfPassing] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
-  const [profileFile, setProfileFile] = useState<File | null>(null);
+  
   const [emailUnique, setEmailUnique] = useState(true);
   const [emailChecking, setEmailChecking] = useState(false);
 
@@ -112,14 +119,8 @@ export default function AddContributorPage() {
     if (contributorType === "staff" && !staffTitle) return setError("Staff title is required for staff");
     setSaving(true);
     try {
-      let avatar = avatarUrl;
-      let profile = profileUrl;
-      if (avatarFile) {
-        avatar = await uploadToGridFS(avatarFile);
-      }
-      if (profileFile) {
-        profile = await uploadToGridFS(profileFile);
-      }
+      const avatar = avatarUrl;
+      const profile = profileUrl;
       const res = await fetch("/api/contributors", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -198,47 +199,79 @@ export default function AddContributorPage() {
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Avatar</label>
-          <div className="flex items-center gap-3 mb-1">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+            <input
+              key={avatarFileKey}
+              ref={avatarFileRef}
+              type="file"
+              accept="image/*"
+              onChange={async (e) => {
+                const file = e.target.files?.[0] ?? null;
+                if (!file) return;
+                setAvatarUploading(true);
+                setAvatarError(null);
+                try {
+                  const up = await uploadToGridFS(file);
+                  setAvatarUrl(up);
+                } catch (err: unknown) {
+                  setAvatarError(err instanceof Error ? err.message : "Upload failed");
+                  if (avatarFileRef.current) avatarFileRef.current.value = "";
+                  setAvatarFileKey((k) => k + 1);
+                } finally {
+                  setAvatarUploading(false);
+                }
+              }}
+              disabled={avatarUploading}
+            />
+            {avatarUploading && <span className="text-xs text-zinc-500">Uploading...</span>}
+            {avatarUrl && <Image src={avatarUrl} alt="Avatar" width={48} height={48} className="w-12 h-12 object-cover rounded-full border" unoptimized />}
             {avatarUrl && (
-              <>
-                <Image src={avatarUrl} alt="Avatar" width={64} height={64} className="w-16 h-16 object-cover rounded-full border" />
-                <button
-                  type="button"
-                  className="text-red-600 ml-2 text-xs border px-2 py-1 rounded"
-                  onClick={async () => {
-                    await handleDeleteFile(avatarUrl);
-                    setAvatarUrl("");
-                  }}
-                >Delete</button>
-              </>
+              <button type="button" className="text-red-600 sm:ml-2" onClick={async () => { await handleDeleteFile(avatarUrl); setAvatarUrl(""); setAvatarFileKey(k => k + 1); }}>Delete</button>
             )}
+            {avatarError && <span className="text-xs text-red-600">{avatarError}</span>}
+            <span className="text-xs text-zinc-500 block sm:inline sm:mx-1">or</span>
+            <input className="border rounded-md px-3 py-2 w-full sm:flex-1" placeholder="Avatar URL (optional)" value={avatarUrl} onChange={(e) => setAvatarUrl(e.target.value)} />
           </div>
-          <input className="w-full border rounded-md px-3 py-2 mb-1" value={avatarUrl} onChange={e => setAvatarUrl(e.target.value)} placeholder="Paste avatar URL or upload a file below" />
-          <input type="file" accept="image/*" onChange={e => setAvatarFile(e.target.files?.[0] ?? null)} />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Profile</label>
-          <div className="flex items-center gap-3 mb-1">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+            <input
+              key={profileFileKey}
+              ref={profileFileRef}
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={async (e) => {
+                const file = e.target.files?.[0] ?? null;
+                if (!file) return;
+                setProfileUploading(true);
+                setProfileError(null);
+                try {
+                  const up = await uploadToGridFS(file);
+                  setProfileUrl(up);
+                } catch (err: unknown) {
+                  setProfileError(err instanceof Error ? err.message : "Upload failed");
+                  if (profileFileRef.current) profileFileRef.current.value = "";
+                  setProfileFileKey((k) => k + 1);
+                } finally {
+                  setProfileUploading(false);
+                }
+              }}
+              disabled={profileUploading}
+            />
+            {profileUploading && <span className="text-xs text-zinc-500">Uploading...</span>}
+            {profileUrl && (profileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+              <Image src={profileUrl} alt="Profile" width={48} height={48} className="w-12 h-12 object-cover rounded border" unoptimized />
+            ) : (
+              <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="underline text-xs">View file</a>
+            ))}
             {profileUrl && (
-              <>
-                {profileUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
-                  <Image src={profileUrl} alt="Profile" width={64} height={64} className="w-16 h-16 object-cover rounded border" />
-                ) : (
-                  <a href={profileUrl} target="_blank" rel="noopener noreferrer" className="underline text-xs">View file</a>
-                )}
-                <button
-                  type="button"
-                  className="text-red-600 ml-2 text-xs border px-2 py-1 rounded"
-                  onClick={async () => {
-                    await handleDeleteFile(profileUrl);
-                    setProfileUrl("");
-                  }}
-                >Delete</button>
-              </>
+              <button type="button" className="text-red-600 sm:ml-2" onClick={async () => { await handleDeleteFile(profileUrl); setProfileUrl(""); setProfileFileKey(k => k + 1); }}>Delete</button>
             )}
+            {profileError && <span className="text-xs text-red-600">{profileError}</span>}
+            <span className="text-xs text-zinc-500 block sm:inline sm:mx-1">or</span>
+            <input className="border rounded-md px-3 py-2 w-full sm:flex-1" placeholder="Profile URL (optional)" value={profileUrl} onChange={(e) => setProfileUrl(e.target.value)} />
           </div>
-          <input className="w-full border rounded-md px-3 py-2 mb-1" value={profileUrl} onChange={e => setProfileUrl(e.target.value)} placeholder="Paste profile URL or upload a file below" />
-          <input type="file" accept="image/*,application/pdf" onChange={e => setProfileFile(e.target.files?.[0] ?? null)} />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Contributor Type <span className="text-red-600">*</span></label>
