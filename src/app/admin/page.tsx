@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import LogoutButton from "./LogoutButton";
 import Link from "next/link";
 import Image from "next/image";
 
@@ -44,7 +45,7 @@ export default function AdminTabsPage() {
     <div className="min-h-screen p-6 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-        <button onClick={() => signOut({ callbackUrl: "/" })} className="rounded-md bg-black text-white px-3 py-2">Sign out</button>
+  <LogoutButton />
       </div>
       <div className="flex gap-2 border-b mb-8">
         <TabButton active={tab === "projects"} onClick={() => setTab("projects")}>Manage Projects</TabButton>

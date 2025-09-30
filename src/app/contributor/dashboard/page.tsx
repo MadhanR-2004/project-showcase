@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { useSession, signOut } from "next-auth/react";
+import { useSession } from "next-auth/react";
+import LogoutButton from "./LogoutButton";
 import Link from "next/link";
 
 type Project = {
@@ -62,7 +63,7 @@ export default function ContributorDashboard() {
     <div className="min-h-screen p-6 max-w-5xl mx-auto">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-3xl font-bold">Contributor Dashboard</h1>
-        <button onClick={() => signOut({ callbackUrl: "/" })} className="rounded-md bg-black text-white px-3 py-2">Sign out</button>
+  <LogoutButton />
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
