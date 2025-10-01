@@ -22,7 +22,7 @@ function extractYouTubeId(input: string | undefined | null): string | null {
   return null;
 }
 
-async function handleDeleteFile(url: string) {
+async function handleDeleteFile(url: string, keepalive = false) {
   // expects url like /api/media/<fileId>
   if (!url || !url.startsWith('/api/media/')) {
     console.warn('Invalid GridFS URL:', url);
@@ -40,6 +40,7 @@ async function handleDeleteFile(url: string) {
       method: "DELETE",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ fileId }),
+      keepalive, // Use keepalive flag for cleanup during page unload
     });
     
     if (!response.ok) {
@@ -70,32 +71,53 @@ export default function AdminCreateProject() {
   const [endDate, setEndDate] = useState("");
   const [techStack, setTechStack] = useState<string[]>([]);
   const [techInput, setTechInput] = useState("");
-  const [posterUrl, setPosterUrl] = useState("");
-  const [posterUploading, setPosterUploading] = useState(false);
-  const [posterError, setPosterError] = useState<string | null>(null);
+  
+  // Upload-on-save: Store File objects, not URLs
+  const [posterFile, setPosterFile] = useState<File | null>(null);
+  const [posterPreview, setPosterPreview] = useState("");
+  const [posterUrl, setPosterUrl] = useState(""); // URL input
   const posterFileRef = useRef<HTMLInputElement | null>(null);
   const [posterFileKey, setPosterFileKey] = useState(0);
-  const [thumbnailUrl, setThumbnailUrl] = useState("");
-  const [thumbnailUploading, setThumbnailUploading] = useState(false);
-  const [thumbnailError, setThumbnailError] = useState<string | null>(null);
+  
+  const [thumbnailFile, setThumbnailFile] = useState<File | null>(null);
+  const [thumbnailPreview, setThumbnailPreview] = useState("");
+  const [thumbnailUrl, setThumbnailUrl] = useState(""); // URL input
   const thumbnailFileRef = useRef<HTMLInputElement | null>(null);
   const [thumbnailFileKey, setThumbnailFileKey] = useState(0);
+  
   // Video links
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [youtubeValid, setYoutubeValid] = useState(true);
   const [gdriveUrl, setGdriveUrl] = useState("");
   const [onedriveUrl, setOnedriveUrl] = useState("");
-  // Showcase photos: array of { url: string, file: File | null, uploading?: boolean, error?: string }
-  const [photos, setPhotos] = useState<{ url: string; file: File | null; uploading?: boolean; error?: string }[]>([{ url: "", file: null }]);
+  
+  // Showcase photos: array of { file: File | null, preview: string, url: string }
+  const [photos, setPhotos] = useState<{ file: File | null; preview: string; url: string }[]>([{ file: null, preview: "", url: "" }]);
   const photoFileRefs = useRef<Array<HTMLInputElement | null>>([]);
+  
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [allContributors, setAllContributors] = useState<{ _id: string; name: string; avatarUrl?: string; profileUrl?: string }[]>([]);
+  
+  // Prevent navigation during save
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (saving) {
+        e.preventDefault();
+        e.returnValue = "Save in progress. Are you sure you want to leave?";
+        return e.returnValue;
+      }
+    };
+
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [saving]);
+  const [allContributors, setAllContributors] = useState<{ _id: string; name: string; email: string; avatarUrl?: string; profileUrl?: string }[]>([]);
   const [selectedContribs, setSelectedContribs] = useState<{
     id: string;
     name?: string;
     projectRole: "mentor" | "team-leader" | "team-member" | "project-head" | "";
   }[]>([]);
+  const [contributorSearches, setContributorSearches] = useState<string[]>([]);
 
   const isAdmin = !!session && (session.user as { role?: string })?.role === "admin";
 
@@ -115,22 +137,63 @@ export default function AdminCreateProject() {
           return;
         }
         const data = await res.json();
-  setAllContributors((data.contributors || []).map((c: { _id: string; name: string; avatarUrl?: string; profileUrl?: string }) => ({ _id: c._id, name: c.name, avatarUrl: c.avatarUrl, profileUrl: c.profileUrl })));
+  setAllContributors((data.contributors || []).map((c: { _id: string; name: string; email: string; avatarUrl?: string; profileUrl?: string }) => ({ _id: c._id, name: c.name, email: c.email, avatarUrl: c.avatarUrl, profileUrl: c.profileUrl })));
       } catch {
         setAllContributors([]);
       }
     })();
   }, []);
 
+  // No cleanup needed! Files are only uploaded on save, not immediately
+
   function appendEmptyContributor() {
     setSelectedContribs([...selectedContribs, { id: "", name: "", projectRole: "" }]);
+    setContributorSearches([...contributorSearches, ""]);
   }
 
   function setContributorId(index: number, id: string) {
     const next = [...selectedContribs];
     next[index].id = id;
-    if (id) next[index].name = ""; // use selected name
+    if (id) {
+      // Find the selected contributor to get their name
+      const selected = allContributors.find(c => c._id === id);
+      if (selected) {
+        next[index].name = selected.name;
+      }
+    }
     setSelectedContribs(next);
+    
+    // Clear search when contributor is selected
+    if (id) {
+      const nextSearches = [...contributorSearches];
+      nextSearches[index] = "";
+      setContributorSearches(nextSearches);
+    }
+  }
+
+  function updateContributorSearch(index: number, search: string) {
+    const next = [...contributorSearches];
+    next[index] = search;
+    setContributorSearches(next);
+    
+    // Clear selected contributor when user starts typing
+    if (search && selectedContribs[index]?.id) {
+      const nextContribs = [...selectedContribs];
+      nextContribs[index].id = "";
+      nextContribs[index].name = "";
+      setSelectedContribs(nextContribs);
+    }
+  }
+
+  function getFilteredContributors(index: number) {
+    const search = contributorSearches[index] || "";
+    if (!search.trim()) return allContributors;
+    
+    const searchLower = search.toLowerCase();
+    return allContributors.filter(c => 
+      c.name.toLowerCase().includes(searchLower) || 
+      c.email.toLowerCase().includes(searchLower)
+    );
   }
 
   // function setContributorName(index: number, name: string) {
@@ -150,14 +213,19 @@ export default function AdminCreateProject() {
     const next = [...selectedContribs];
     next.splice(index, 1);
     setSelectedContribs(next);
+    
+    const nextSearches = [...contributorSearches];
+    nextSearches.splice(index, 1);
+    setContributorSearches(nextSearches);
   }
 
-  async function uploadToGridFS(file: File) {
+  async function uploadToGridFS(file: File, signal?: AbortSignal) {
     const formData = new FormData();
     formData.append("file", file);
     const res = await fetch("/api/media/upload", {
       method: "POST",
       body: formData,
+      signal, // Support cancellation
     });
     if (!res.ok) throw new Error("Upload failed");
     return (await res.json()) as { fileId: string; contentType?: string };
@@ -171,19 +239,57 @@ export default function AdminCreateProject() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-  // Frontend validation
-  if (!title.trim()) return setError("Title is required");
-  if (!posterUrl) return setError("Poster image is required");
-  if (!youtubeUrl.trim() && !gdriveUrl.trim() && !onedriveUrl.trim()) return setError("At least one project video is required");
-  if (!photos.length || !photos.some(p => p.url)) return setError("At least one showcase image is required");
-  if (!shortDescription.trim()) return setError("Short description is required");
-  if (!description.trim()) return setError("Description is required");
-  if (!techStack.length) return setError("At least one tech stack is required");
-  if (!selectedContribs.length || !selectedContribs.some(c => c.id || c.name)) return setError("At least one contributor is required");
-  setSaving(true);
+    
+    // Frontend validation
+    if (!title.trim()) return setError("Title is required");
+    if (!posterFile && !posterPreview && !posterUrl) return setError("Poster image is required (file or URL)");
+    if (!youtubeUrl.trim() && !gdriveUrl.trim() && !onedriveUrl.trim()) return setError("At least one project video is required");
+    if (!photos.some(p => p.file || p.preview || p.url)) return setError("At least one showcase image is required");
+    if (!shortDescription.trim()) return setError("Short description is required");
+    if (!description.trim()) return setError("Description is required");
+    if (!techStack.length) return setError("At least one tech stack is required");
+    if (!selectedContribs.length || !selectedContribs.some(c => c.id || c.name)) return setError("At least one contributor is required");
+    
+    setSaving(true);
+    
+    // Create AbortController for cancellation support
+    const abortController = new AbortController();
+    
+    // Track uploaded files for rollback on failure or cancellation
+    const uploadedFiles: string[] = [];
+    
     try {
-      const poster: string | undefined = posterUrl || undefined;
-      const thumbnail: string | undefined = thumbnailUrl || undefined;
+      // Upload files NOW (on save) or use URL
+      let finalPosterUrl = "";
+      if (posterFile) {
+        const up = await uploadToGridFS(posterFile, abortController.signal);
+        finalPosterUrl = `/api/media/${up.fileId}`;
+        uploadedFiles.push(finalPosterUrl);
+      } else if (posterUrl) {
+        finalPosterUrl = posterUrl;
+      }
+      
+      let finalThumbnailUrl = "";
+      if (thumbnailFile) {
+        const up = await uploadToGridFS(thumbnailFile, abortController.signal);
+        finalThumbnailUrl = `/api/media/${up.fileId}`;
+        uploadedFiles.push(finalThumbnailUrl);
+      } else if (thumbnailUrl) {
+        finalThumbnailUrl = thumbnailUrl;
+      }
+      
+      // Upload all showcase photos or use URLs
+      const showcasePhotos: string[] = [];
+      for (const photo of photos) {
+        if (photo.file) {
+          const up = await uploadToGridFS(photo.file, abortController.signal);
+          const url = `/api/media/${up.fileId}`;
+          showcasePhotos.push(url);
+          uploadedFiles.push(url);
+        } else if (photo.url) {
+          showcasePhotos.push(photo.url);
+        }
+      }
 
       // Video media
       let media: { kind: "youtube" | "gdrive" | "onedrive"; url: string; youtubeId?: string } | undefined = undefined;
@@ -195,9 +301,6 @@ export default function AdminCreateProject() {
         media = { kind: "onedrive", url: onedriveUrl };
       }
 
-      // Only use already-uploaded photo URLs
-      const showcasePhotos: string[] = photos.map((p) => p.url).filter(Boolean);
-
       const body = {
         title,
         shortDescription,
@@ -205,8 +308,8 @@ export default function AdminCreateProject() {
         startDate,
         endDate,
         techStack,
-        poster,
-        thumbnail,
+        poster: finalPosterUrl || undefined,
+        thumbnail: finalThumbnailUrl || undefined,
         media,
         showcasePhotos,
         contributors: selectedContribs
@@ -220,16 +323,40 @@ export default function AdminCreateProject() {
           })),
         isPublished: true,
       };
+      
       const res = await fetch("/api/projects", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error("Create failed");
-      const project = await res.json();
-      router.push(`/projects/${project._id}`);
+      
+      const data = await res.json();
+      
+      if (!res.ok) {
+        // API call failed - rollback uploaded files
+        console.error("Project creation failed, rolling back uploaded files...");
+        await Promise.all(uploadedFiles.map((url: string) => handleDeleteFile(url)));
+        throw new Error(data.error || "Create failed");
+      }
+      
+      router.push(`/projects/${data._id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      // Check if operation was aborted (user navigated away or cancelled)
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.log("Upload cancelled by user");
+      }
+      
+      // Rollback: Delete any files that were uploaded (even if cancelled)
+      if (uploadedFiles.length > 0) {
+        console.error("Create failed or cancelled, rolling back uploaded files...", uploadedFiles);
+        await Promise.all(uploadedFiles.map((url: string) => handleDeleteFile(url)));
+      }
+      
+      // Don't show error message if user cancelled
+      if (!(err instanceof Error && err.name === 'AbortError')) {
+        setError(err instanceof Error ? err.message : "Something went wrong");
+      }
+      
       setSaving(false);
     }
   }
@@ -246,103 +373,144 @@ export default function AdminCreateProject() {
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Poster Image <span className="text-red-600">*</span></label>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-2">
             <input
               key={posterFileKey}
               ref={posterFileRef}
               type="file"
               accept="image/*"
-              onChange={async (e) => {
-                const file = e.target.files?.[0] ?? null;
+              onChange={(e) => {
+                const file = e.target.files?.[0];
                 if (!file) return;
-                setPosterUploading(true);
-                setPosterError(null);
-                try {
-                  const up = await uploadToGridFS(file);
-                  setPosterUrl(`/api/media/${up.fileId}`);
-                } catch (err: unknown) {
-                  if (err instanceof Error) {
-                    setPosterError(err.message);
-                  } else {
-                    setPosterError("Upload failed");
-                  }
-                  // Clear failed file selection
-                  if (posterFileRef.current) {
-                    posterFileRef.current.value = "";
-                  }
-                  setPosterFileKey(k => k + 1);
-                } finally {
-                  setPosterUploading(false);
-                }
+                
+                setPosterFile(file);
+                setPosterPreview(URL.createObjectURL(file));
+                setPosterUrl(""); // Clear URL when file is selected
               }}
-              disabled={posterUploading}
             />
-            {posterUploading && <span className="text-xs text-zinc-500">Uploading...</span>}
-            {posterUrl && <Image src={posterUrl} alt="Poster" width={48} height={48} className="w-12 h-12 object-cover rounded border" unoptimized />}
-            {posterUrl && (
-              <button type="button" className="text-red-600 sm:ml-2" onClick={async () => { await handleDeleteFile(posterUrl); setPosterUrl(""); setPosterFileKey(k => k + 1); }}>Delete</button>
+            {posterPreview && <Image src={posterPreview} alt="Poster Preview" width={48} height={48} className="w-12 h-12 object-cover rounded border" unoptimized />}
+            {posterPreview && (
+              <button type="button" className="text-red-600 sm:ml-2" onClick={() => {
+                setPosterFile(null);
+                setPosterPreview("");
+                setPosterFileKey(k => k + 1);
+              }}>Remove</button>
             )}
-            {posterError && <span className="text-xs text-red-600">{posterError}</span>}
-            <span className="text-xs text-zinc-500 block sm:inline sm:mx-1">or</span>
-            <input className="border rounded-md px-3 py-2 w-full sm:flex-1" placeholder="Poster URL (optional)" value={posterUrl} onChange={(e) => setPosterUrl(e.target.value)} />
+            {posterFile && <span className="text-xs text-blue-600">Will upload on save</span>}
           </div>
+          <div className="text-sm text-gray-600 mb-1">OR provide image URL:</div>
+          <input
+            type="url"
+            placeholder="https://example.com/image.jpg"
+            className="w-full border rounded-md px-3 py-2"
+            value={posterUrl}
+            onChange={(e) => {
+              setPosterUrl(e.target.value);
+              if (e.target.value) {
+                // Clear file when URL is entered
+                setPosterFile(null);
+                setPosterPreview("");
+                setPosterFileKey(k => k + 1);
+              }
+            }}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Thumbnail (for lists/cards)</label>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-3 mb-2">
             <input
               key={thumbnailFileKey}
               ref={thumbnailFileRef}
               type="file"
               accept="image/*"
-              onChange={async (e) => {
-                const file = e.target.files?.[0] ?? null;
+              onChange={(e) => {
+                const file = e.target.files?.[0];
                 if (!file) return;
-                setThumbnailUploading(true);
-                setThumbnailError(null);
-                try {
-                  const up = await uploadToGridFS(file);
-                  setThumbnailUrl(`/api/media/${up.fileId}`);
-                } catch (err: unknown) {
-                  if (err instanceof Error) {
-                    setThumbnailError(err.message);
-                  } else {
-                    setThumbnailError("Upload failed");
-                  }
-                  // Clear failed file selection
-                  if (thumbnailFileRef.current) {
-                    thumbnailFileRef.current.value = "";
-                  }
-                  setThumbnailFileKey(k => k + 1);
-                } finally {
-                  setThumbnailUploading(false);
-                }
+                
+                setThumbnailFile(file);
+                setThumbnailPreview(URL.createObjectURL(file));
+                setThumbnailUrl(""); // Clear URL when file is selected
               }}
-              disabled={thumbnailUploading}
             />
-            {thumbnailUploading && <span className="text-xs text-zinc-500">Uploading...</span>}
-            {thumbnailUrl && <Image src={thumbnailUrl} alt="Thumbnail" width={48} height={48} className="w-12 h-12 object-cover rounded border" unoptimized />}
-            {thumbnailUrl && (
-              <button type="button" className="text-red-600 sm:ml-2" onClick={async () => { await handleDeleteFile(thumbnailUrl); setThumbnailUrl(""); setThumbnailFileKey(k => k + 1); }}>Delete</button>
+            {thumbnailPreview && <Image src={thumbnailPreview} alt="Thumbnail Preview" width={48} height={48} className="w-12 h-12 object-cover rounded border" unoptimized />}
+            {thumbnailPreview && (
+              <button type="button" className="text-red-600 sm:ml-2" onClick={() => {
+                setThumbnailFile(null);
+                setThumbnailPreview("");
+                setThumbnailFileKey(k => k + 1);
+              }}>Remove</button>
             )}
-            {thumbnailError && <span className="text-xs text-red-600">{thumbnailError}</span>}
-            <span className="text-xs text-zinc-500 block sm:inline sm:mx-1">or</span>
-            <input className="border rounded-md px-3 py-2 w-full sm:flex-1" placeholder="Thumbnail URL (optional)" value={thumbnailUrl} onChange={(e) => setThumbnailUrl(e.target.value)} />
+            {thumbnailFile && <span className="text-xs text-blue-600">Will upload on save</span>}
           </div>
+          <div className="text-sm text-gray-600 mb-1">OR provide image URL:</div>
+          <input
+            type="url"
+            placeholder="https://example.com/thumbnail.jpg"
+            className="w-full border rounded-md px-3 py-2"
+            value={thumbnailUrl}
+            onChange={(e) => {
+              setThumbnailUrl(e.target.value);
+              if (e.target.value) {
+                // Clear file when URL is entered
+                setThumbnailFile(null);
+                setThumbnailPreview("");
+                setThumbnailFileKey(k => k + 1);
+              }
+            }}
+          />
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Contributors <span className="text-red-600">*</span></label>
           <ul className="space-y-4 mb-4">
             {selectedContribs.map((c, idx) => (
               <li key={`${c.id}-${idx}`} className="bg-zinc-100 dark:bg-zinc-800 rounded-lg p-4 flex flex-wrap items-center gap-3 shadow-sm border border-zinc-200 dark:border-zinc-700">
-                <div className="flex flex-col gap-1 min-w-[180px]">
+                <div className="flex flex-col gap-1 min-w-[250px]">
                   <label className="text-xs text-zinc-500">Select Contributor</label>
-                  <select className="border rounded-md px-3 py-2" value={c.id} onChange={(e) => setContributorId(idx, e.target.value)}>
-                    <option value="">Select Contributor</option>
-                    {allContributors.map((opt) => (
-                      <option key={opt._id} value={opt._id}>{opt.name}</option>
-                    ))}
-                  </select>
+                  
+                  {/* Show selected contributor name */}
+                  {c.id && c.name ? (
+                    <div className="border rounded-md px-3 py-2 bg-white dark:bg-zinc-900 flex items-center justify-between">
+                      <span className="font-medium">{c.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const next = [...selectedContribs];
+                          next[idx].id = "";
+                          next[idx].name = "";
+                          setSelectedContribs(next);
+                        }}
+                        className="text-zinc-400 hover:text-red-600 ml-2"
+                        title="Clear selection"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Search input */}
+                      <input
+                        type="text"
+                        className="border rounded-md px-3 py-2 mb-1"
+                        placeholder="Search by name or email..."
+                        value={contributorSearches[idx] || ""}
+                        onChange={(e) => updateContributorSearch(idx, e.target.value)}
+                      />
+                      {/* Dropdown with filtered results */}
+                      <select 
+                        className="border rounded-md px-3 py-2" 
+                        value={c.id} 
+                        onChange={(e) => setContributorId(idx, e.target.value)}
+                        size={Math.min(5, Math.max(2, getFilteredContributors(idx).length + 1))}
+                      >
+                        <option value="">Select Contributor</option>
+                        {getFilteredContributors(idx).map((opt) => (
+                          <option key={opt._id} value={opt._id}>
+                            {opt.name} - {opt.email}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
                 </div>
                 <div className="flex flex-col gap-1 min-w-[120px]">
                   <label className="text-xs text-zinc-500">Role</label>
@@ -487,72 +655,81 @@ export default function AdminCreateProject() {
 
         <div>
           <label className="block text-sm font-medium mb-1">Showcase Photos <span className="text-red-600">*</span></label>
-          <ul className="space-y-2 mb-2">
+          <ul className="space-y-3 mb-2">
             {photos.map((p, idx) => (
-              <li key={idx} className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
-                <input
-                  className="border rounded-md px-3 py-2 w-full sm:flex-1"
-                  placeholder="Photo URL (optional)"
-                  value={p.url}
-                  onChange={e => {
-                    const next = [...photos];
-                    next[idx].url = e.target.value;
-                    setPhotos(next);
-                  }}
-                  disabled={!!p.file || !!p.uploading}
-                />
-                <span className="text-xs text-zinc-500 block sm:inline sm:mx-1 text-center">or</span>
-                <input
-                  ref={el => { photoFileRefs.current[idx] = el; }}
-                  type="file"
-                  accept="image/*"
-                  onChange={async e => {
-                    const file = e.target.files?.[0] ?? null;
-                    if (!file) return;
-                    const next = [...photos];
-                    next[idx].file = file;
-                    next[idx].uploading = true;
-                    next[idx].error = undefined;
-                    setPhotos(next);
-                    try {
-                      const up = await uploadToGridFS(file);
-                      setPhotos(prev => prev.map((p, i) => i === idx ? { url: `/api/media/${up.fileId}`, file: null, uploading: false } : p));
-                    } catch {
-                      // Reset failed state and clear file/url so the filename is not shown
-                      setPhotos(prev => prev.map((p, i) => i === idx ? { url: "", file: null, uploading: false, error: "Upload failed" } : p));
-                      if (photoFileRefs.current[idx]) {
-                        photoFileRefs.current[idx]!.value = "";
-                      }
-                    }
-                  }}
-                  disabled={!!p.url || !!p.uploading}
-                />
-                {p.uploading && (
-                  <span className="w-12 h-12 flex items-center justify-center"><svg className="animate-spin h-6 w-6 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" /></svg></span>
-                )}
-                {p.url && !p.uploading && (
-                  <Image src={p.url} alt="Showcase" width={48} height={48} className="w-12 h-12 object-cover rounded border" unoptimized />
-                )}
-                {p.url && !p.uploading && (
-                  <button type="button" className="text-red-600 sm:ml-2" onClick={async () => { await handleDeleteFile(p.url); setPhotos(photos.length === 1 ? [{ url: "", file: null }] : photos.filter((_, i) => i !== idx)); if (photoFileRefs.current[idx]) { photoFileRefs.current[idx]!.value = ""; } }}>Delete</button>
-                )}
-                <button
-                  type="button"
-                  className="text-zinc-400 hover:text-red-600 text-xl sm:ml-2"
-                  title="Remove"
-                  onClick={() => setPhotos(photos.length === 1 ? [{ url: "", file: null }] : photos.filter((_, i) => i !== idx))}
-                  disabled={photos.length === 1 || !!p.uploading}
-                >
-                  ✕
-                </button>
-                {p.error && <span className="text-xs text-red-600 ml-2">{p.error}</span>}
+              <li key={idx} className="border rounded-md p-3">
+                <div className="flex flex-col gap-2">
+                  <div className="flex flex-col sm:flex-row gap-2 items-stretch sm:items-center">
+                    <input
+                      ref={el => { photoFileRefs.current[idx] = el; }}
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        
+                        const next = [...photos];
+                        next[idx].file = file;
+                        next[idx].preview = URL.createObjectURL(file);
+                        next[idx].url = ""; // Clear URL when file is selected
+                        setPhotos(next);
+                      }}
+                    />
+                    {p.preview && (
+                      <Image src={p.preview} alt="Showcase Preview" width={48} height={48} className="w-12 h-12 object-cover rounded border" unoptimized />
+                    )}
+                    {p.preview && (
+                      <button type="button" className="text-red-600 sm:ml-2" onClick={() => {
+                        const next = [...photos];
+                        next[idx].file = null;
+                        next[idx].preview = "";
+                        setPhotos(next);
+                        if (photoFileRefs.current[idx]) {
+                          photoFileRefs.current[idx]!.value = "";
+                        }
+                      }}>Remove</button>
+                    )}
+                    <button
+                      type="button"
+                      className="text-zinc-400 hover:text-red-600 text-xl sm:ml-2"
+                      title="Delete Slot"
+                      onClick={() => setPhotos(photos.length === 1 ? [{ file: null, preview: "", url: "" }] : photos.filter((_, i) => i !== idx))}
+                      disabled={photos.length === 1}
+                    >
+                      ✕
+                    </button>
+                    {p.file && <span className="text-xs text-blue-600">Will upload on save</span>}
+                  </div>
+                  <div>
+                    <div className="text-sm text-gray-600 mb-1">OR provide image URL:</div>
+                    <input
+                      type="url"
+                      placeholder="https://example.com/photo.jpg"
+                      className="w-full border rounded-md px-2 py-1 text-sm"
+                      value={p.url}
+                      onChange={(e) => {
+                        const next = [...photos];
+                        next[idx].url = e.target.value;
+                        if (e.target.value) {
+                          // Clear file when URL is entered
+                          next[idx].file = null;
+                          next[idx].preview = "";
+                          if (photoFileRefs.current[idx]) {
+                            photoFileRefs.current[idx]!.value = "";
+                          }
+                        }
+                        setPhotos(next);
+                      }}
+                    />
+                  </div>
+                </div>
               </li>
             ))}
           </ul>
           <button
             type="button"
             className="rounded-md bg-blue-600 hover:bg-blue-700 text-white px-4 py-2"
-            onClick={() => setPhotos([...photos, { url: "", file: null }])}
+            onClick={() => setPhotos([...photos, { file: null, preview: "", url: "" }])}
           >
             + Add Photo
           </button>

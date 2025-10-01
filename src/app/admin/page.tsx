@@ -26,17 +26,19 @@ const userHasAdminRole = (user: unknown): user is SessionUserWithRole => {
 
 export default function AdminTabsPage() {
   const { data: session, status } = useSession();
-  const [tab, setTab] = useState<"projects" | "contributors" | "create-admin">(() => {
+  const [tab, setTab] = useState<"projects" | "users">(() => {
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       const t = url.searchParams.get("tab");
-      if (t === "contributors" || t === "projects" || t === "create-admin") return t;
+      if (t === "projects" || t === "users") return t;
     }
     return "projects";
   });
 
   if (status === "loading") return null;
-  if (!session || !userHasAdminRole(session.user) || session.user.role !== "admin") {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const userRole = (session?.user as any)?.role;
+  if (!session || !userRole || (userRole !== "admin" && userRole !== "both")) {
     if (typeof window !== "undefined") window.location.href = "/admin/login";
     return null;
   }
@@ -49,11 +51,10 @@ export default function AdminTabsPage() {
       </div>
       <div className="flex gap-2 border-b mb-8">
         <TabButton active={tab === "projects"} onClick={() => setTab("projects")}>Manage Projects</TabButton>
-        <TabButton active={tab === "contributors"} onClick={() => setTab("contributors")}>Manage Contributors</TabButton>
-        <TabButton active={tab === "create-admin"} onClick={() => setTab("create-admin")}>Create Admin</TabButton>
+        <TabButton active={tab === "users"} onClick={() => setTab("users")}>Manage Users</TabButton>
       </div>
       <div>
-        {tab === "projects" ? <ProjectsTab /> : tab === "contributors" ? <ContributorsTab /> : <CreateAdminTab />}
+        {tab === "projects" ? <ProjectsTab /> : <UsersTab />}
       </div>
     </div>
   );
@@ -121,11 +122,118 @@ function ProjectsTab() {
 type Contributor = {
   _id?: string;
   name: string;
+  email: string;
+  role: "admin" | "contributor" | "both";
+  avatarUrl?: string;
   profileUrl?: string;
   contributorType?: string;
   branch?: string;
   staffTitle?: string;
+  yearOfPassing?: string;
 };
+
+function UsersTab() {
+  const [users, setUsers] = useState<Contributor[]>([]);
+  const [loading, setLoading] = useState(true);
+  
+  useEffect(() => {
+    (async () => {
+      const res = await fetch("/api/users");
+      const data = await res.json();
+      setUsers(data.users || []);
+      setLoading(false);
+    })();
+  }, []);
+  
+  const getRoleBadgeColor = (role: string) => {
+    switch(role) {
+      case "admin": return "bg-purple-100 text-purple-700";
+      case "contributor": return "bg-green-100 text-green-700";
+      case "both": return "bg-blue-100 text-blue-700";
+      default: return "bg-gray-100 text-gray-700";
+    }
+  };
+  
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-4">
+        <h2 className="text-xl font-semibold">All Users</h2>
+        <Link href="/admin/users/new" className="rounded-md bg-blue-600 text-white px-4 py-2 font-semibold">+ Create User</Link>
+      </div>
+      
+      {loading ? <p>Loading...</p> : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {users.map((user) => (
+            <div key={user._id} className="bg-white dark:bg-zinc-900 rounded-lg shadow border border-zinc-200 dark:border-zinc-700 p-5 flex flex-col gap-3">
+              <div className="flex items-start gap-3">
+                {user.avatarUrl && (
+                  <Image 
+                    src={user.avatarUrl} 
+                    alt={user.name} 
+                    width={48} 
+                    height={48} 
+                    className="w-12 h-12 rounded-full object-cover flex-shrink-0" 
+                  />
+                )}
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-lg font-bold mb-1 truncate">{user.name}</h3>
+                  <p className="text-xs text-zinc-500 mb-2 truncate">{user.email}</p>
+                  <span className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${getRoleBadgeColor(user.role)}`}>
+                    {user.role.toUpperCase()}
+                  </span>
+                </div>
+              </div>
+              
+              {(user.role === "contributor" || user.role === "both") && (
+                <div className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1 border-t pt-2">
+                  {user.contributorType && (
+                    <p><span className="font-semibold">Type:</span> {user.contributorType}</p>
+                  )}
+                  {user.contributorType === "student" && (
+                    <>
+                      {user.branch && <p><span className="font-semibold">Branch:</span> {user.branch}</p>}
+                      {user.yearOfPassing && <p><span className="font-semibold">Year:</span> {user.yearOfPassing}</p>}
+                    </>
+                  )}
+                  {user.contributorType === "staff" && user.staffTitle && (
+                    <p><span className="font-semibold">Title:</span> {user.staffTitle}</p>
+                  )}
+                  {user.profileUrl && (
+                    <p>
+                      <span className="font-semibold">Profile:</span>{" "}
+                      <a href={user.profileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                        View
+                      </a>
+                    </p>
+                  )}
+                </div>
+              )}
+              
+              <div className="flex gap-2 mt-2 border-t pt-2">
+                <Link href={`/admin/users/${user._id}`} className="flex-1 text-center rounded bg-blue-100 text-blue-700 px-3 py-1 text-xs font-semibold">
+                  Edit
+                </Link>
+                <button 
+                  className="flex-1 rounded bg-red-100 text-red-700 px-3 py-1 text-xs font-semibold" 
+                  onClick={async () => {
+                    if (confirm(`Delete user ${user.name}?`)) {
+                      const res = await fetch(`/api/users/${user._id}`, { method: "DELETE" });
+                      if (res.ok) {
+                        setUsers(users.filter(u => u._id !== user._id));
+                      }
+                    }
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 function ContributorsTab() {
   const [contributors, setContributors] = useState<Contributor[]>([]);
@@ -173,100 +281,42 @@ function ContributorsTab() {
   );
 }
 
-function CreateAdminTab() {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim() || !email.trim()) {
-      setMessage({ type: 'error', text: 'Name and email are required' });
-      return;
-    }
-
-    setLoading(true);
-    setMessage(null);
-
-    try {
-      const res = await fetch("/api/admin/create", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name: name.trim(), email: email.trim() }),
-      });
-
-      const data = await res.json();
-
-      if (res.ok) {
-        setMessage({ type: 'success', text: data.message });
-        setName("");
-        setEmail("");
-      } else {
-        setMessage({ type: 'error', text: data.error || 'Failed to create admin' });
-      }
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Network error. Please try again.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
+function CreateUserTab() {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold">Create New Admin</h2>
-      
-      <form onSubmit={handleSubmit} className="space-y-4 max-w-md">
-        <div>
-          <label className="block text-sm font-medium mb-1">Name <span className="text-red-600">*</span></label>
-          <input
-            type="text"
-            className="w-full border rounded-md px-3 py-2"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Enter admin name"
-            required
-          />
-        </div>
-
-        <div>
-          <label className="block text-sm font-medium mb-1">Email <span className="text-red-600">*</span></label>
-          <input
-            type="email"
-            className="w-full border rounded-md px-3 py-2"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="Enter admin email"
-            required
-          />
-        </div>
-
-        {message && (
-          <div className={`p-3 rounded-md ${
-            message.type === 'success' 
-              ? 'bg-green-100 text-green-800 border border-green-200' 
-              : 'bg-red-100 text-red-800 border border-red-200'
-          }`}>
-            {message.text}
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">Create New User</h2>
+        <Link 
+          href="/admin/users/new"
+          className="rounded-md bg-blue-600 text-white px-4 py-2 font-semibold"
         >
-          {loading ? "Creating Admin..." : "Create Admin"}
-        </button>
-      </form>
+          + Create User
+        </Link>
+      </div>
+      
+      <div className="p-6 bg-blue-50 border border-blue-200 rounded-md">
+        <h3 className="font-medium text-blue-900 mb-3">Unified User Management</h3>
+        <p className="text-sm text-blue-800 mb-3">
+          Create users with different roles in a single, streamlined interface.
+        </p>
+        <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+          <li><strong>Admin Only:</strong> Access to admin panel only</li>
+          <li><strong>Contributor Only:</strong> Access to contributor dashboard only</li>
+          <li><strong>Both:</strong> Access to both admin panel and contributor dashboard</li>
+        </ul>
+        <p className="text-sm text-blue-800 mt-3">
+          A random password will be generated and sent to the user&apos;s email automatically.
+        </p>
+      </div>
 
-      <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-md">
-        <h3 className="font-medium text-blue-900 mb-2">How it works:</h3>
-        <ul className="text-sm text-blue-800 space-y-1">
-          <li>• A random password will be generated for the new admin</li>
-          <li>• Login credentials will be sent to the provided email address</li>
-          <li>• The new admin should change their password on first login</li>
-          <li>• Only existing admins can create new admin accounts</li>
+      <div className="p-6 bg-green-50 border border-green-200 rounded-md">
+        <h3 className="font-medium text-green-900 mb-2">✅ Benefits of Unified System</h3>
+        <ul className="text-sm text-green-800 space-y-1 list-disc list-inside">
+          <li>Single collection for all users (simpler database management)</li>
+          <li>Flexible role assignment (admin, contributor, or both)</li>
+          <li>Automatic file tracking for avatars (no orphaned files)</li>
+          <li>Email credentials sent automatically</li>
+          <li>Consistent user experience across roles</li>
         </ul>
       </div>
     </div>

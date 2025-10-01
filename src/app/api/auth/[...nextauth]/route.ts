@@ -35,18 +35,32 @@ export const authOptions: NextAuthOptions = {
         const ok = await verifyPassword(credentials.password, user.passwordHash);
         if (!ok) return null;
 
-        // Determine login tab from referer or custom header
-        let loginTab = "";
+        // Determine which panel they're trying to access
+        let requestedPanel = "";
         if (req && req.headers && req.headers.referer) {
           const url = new URL(req.headers.referer);
-          loginTab = url.searchParams.get("tab") || "";
+          const path = url.pathname;
+          if (path.includes("/admin/login")) requestedPanel = "admin";
+          else if (path.includes("/contributor/login")) requestedPanel = "contributor";
         }
 
-        // Only allow contributors to log in via contributor tab, admins via admin tab
-        if (loginTab === "contributor" && user.role !== "contributor") return null;
-        if (loginTab === "admin" && user.role !== "admin") return null;
+        // Check if user has access to the requested panel
+        // "both" role can access both panels
+        // "admin" role can only access admin panel
+        // "contributor" role can only access contributor panel
+        if (requestedPanel === "admin" && user.role !== "admin" && user.role !== "both") {
+          return null; // No access
+        }
+        if (requestedPanel === "contributor" && user.role !== "contributor" && user.role !== "both") {
+          return null; // No access
+        }
 
-        return { id: user._id, name: user.name || user.email, email: user.email, role: user.role } as ExtendedUser;
+        return { 
+          id: user._id, 
+          name: user.name || user.email, 
+          email: user.email, 
+          role: user.role 
+        } as ExtendedUser;
       },
     }),
   ],

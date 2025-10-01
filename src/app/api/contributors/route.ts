@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createContributor, listContributors, ContributorDoc } from "../../../lib/contributors";
-import { createUser, findUserByEmail } from "../../../lib/users";
+import { createContributor, ContributorDoc } from "../../../lib/contributors";
+import { createUser, findUserByEmail, listContributors } from "../../../lib/users";
 import { sendContributorCredentials } from "../../../lib/email";
 import { generateReadablePassword } from "../../../lib/password-generator";
 import bcrypt from "bcryptjs";
@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const email = searchParams.get('email');
   
+  // Fetch from unified users collection (users with contributor or both role)
   const items = await listContributors();
   
   // If email parameter is provided, filter by email for uniqueness check
@@ -36,7 +37,7 @@ export async function POST(req: NextRequest) {
   }
   // Uniqueness check
   const all = await listContributors();
-  if (all.some((c: ContributorDoc) => c.email === body.email)) {
+  if (all.some((c) => c.email === body.email)) {
     return NextResponse.json({ error: 'Email must be unique' }, { status: 400 });
   }
   // Ensure no user exists with same email

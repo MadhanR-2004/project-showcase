@@ -7,7 +7,10 @@
     "build": "next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "seed:admin": "node --import tsx scripts/seed-admin.ts"
+    "seed:admin": "node --import tsx scripts/seed-admin.ts",
+    "migrate:users": "node --import tsx scripts/migrate-users.ts",
+    "cleanup:files": "node --import tsx scripts/cleanup-orphaned-files.ts",
+    "cleanup:files:dry-run": "node --import tsx scripts/cleanup-orphaned-files.ts --dry-run"
   },
   "dependencies": {
     "@auth/mongodb-adapter": "^3.10.0",

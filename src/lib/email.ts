@@ -31,27 +31,37 @@ const createOutlookTransporter = () => {
   });
 };
 
-export async function sendAdminCredentials(email: string, name: string, password: string) {
+export async function sendAdminCredentials(email: string, name: string, password: string, isRoleChange = false) {
+  const subject = isRoleChange 
+    ? 'Your Role Has Been Changed - Project Showcase'
+    : 'Admin Account Created - for sona It project showcase';
+  
+  const bodyIntro = isRoleChange
+    ? `<p>Your account role has been changed to <strong>Admin</strong>.</p>`
+    : `<p>Your admin account has been created successfully. Here are your login credentials:</p>`;
+  
+  const credentialsSection = isRoleChange
+    ? `<p>You can now access the admin panel using your existing credentials.</p>`
+    : `
+      <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+        <h3 style="color: #333; margin-top: 0;">Login Credentials</h3>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Password:</strong> <code style="background-color: #e9ecef; padding: 8px 12px; border-radius: 5px; font-size: 16px; font-weight: bold; letter-spacing: 1px;">${password}</code></p>
+      </div>
+      <p><strong>Important:</strong> Please change your password after your first login for security purposes.</p>
+    `;
+  
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
-    subject: 'Admin Account Created - for sona It project showcase',
+    subject,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #333;">Welcome to Project Showcase page of sona It</h2>
         <p>Hello ${name},</p>
-        <p>Your admin account has been created successfully. Here are your login credentials:</p>
-        
-        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
-          <h3 style="color: #333; margin-top: 0;">Login Credentials</h3>
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Password:</strong> <code style="background-color: #e9ecef; padding: 8px 12px; border-radius: 5px; font-size: 16px; font-weight: bold; letter-spacing: 1px;">${password}</code></p>
-        </div>
-        
-        <p><strong>Important:</strong> Please change your password after your first login for security purposes.</p>
-        
+        ${bodyIntro}
+        ${credentialsSection}
         <p>You can access the admin panel at: <a href="${process.env.NEXTAUTH_URL}/admin/login">${process.env.NEXTAUTH_URL}/admin/login</a></p>
-        
         <p>Best regards,<br>Project Showcase Team</p>
       </div>
     `,
@@ -112,22 +122,36 @@ export async function sendOTP(email: string, otp: string) {
   }
 }
 
-export async function sendContributorCredentials(email: string, name: string, password: string) {
+export async function sendContributorCredentials(email: string, name: string, password: string, isRoleChange = false) {
+  const subject = isRoleChange
+    ? 'Your Role Has Been Changed - Project Showcase'
+    : 'Your Contributor Account - Project Showcase';
+  
+  const bodyIntro = isRoleChange
+    ? `<p>Your account role has been changed to <strong>Contributor</strong>.</p>`
+    : `<p>Your contributor account has been created. Use the following credentials to log in:</p>`;
+  
+  const credentialsSection = isRoleChange
+    ? `<p>You can now access the contributor dashboard using your existing credentials.</p>`
+    : `
+      <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Password:</strong> <code style="background-color: #e9ecef; padding: 8px 12px; border-radius: 5px; font-size: 16px; font-weight: bold; letter-spacing: 1px;">${password}</code></p>
+      </div>
+      <p style="margin-top:16px"><strong>Important:</strong> Please change your password after first login.</p>
+    `;
+  
   const mailOptions = {
     from: process.env.EMAIL_USER,
     to: email,
-    subject: 'Your Contributor Account - Project Showcase',
+    subject,
     html: `
       <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
         <h2 style="color: #333;">Welcome to Project Showcase</h2>
         <p>Hello ${name || email},</p>
-        <p>Your contributor account has been created. Use the following credentials to log in:</p>
-        <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
-          <p><strong>Email:</strong> ${email}</p>
-          <p><strong>Password:</strong> <code style="background-color: #e9ecef; padding: 8px 12px; border-radius: 5px; font-size: 16px; font-weight: bold; letter-spacing: 1px;">${password}</code></p>
-        </div>
+        ${bodyIntro}
+        ${credentialsSection}
         <p>You can access the contributor dashboard at: <a href="${process.env.NEXTAUTH_URL}/contributor/login">${process.env.NEXTAUTH_URL}/contributor/login</a></p>
-        <p style="margin-top:16px"><strong>Important:</strong> Please change your password after first login.</p>
         <p>Best regards,<br/>Project Showcase Team</p>
       </div>
     `,
@@ -142,6 +166,64 @@ export async function sendContributorCredentials(email: string, name: string, pa
       await altTransporter.sendMail(mailOptions);
       return { success: true };
     } catch (altError) {
+      return { success: false, error: altError instanceof Error ? altError.message : 'Unknown error' };
+    }
+  }
+}
+
+export async function sendDualRoleCredentials(email: string, name: string, password: string, isRoleChange = false) {
+  const subject = isRoleChange
+    ? 'Your Role Has Been Changed - Project Showcase'
+    : 'Your Admin + Contributor Account - Project Showcase';
+  
+  const bodyIntro = isRoleChange
+    ? `<p>Your account role has been changed to <strong>Both Admin and Contributor</strong>.</p>`
+    : `<p>Your account has been created with <strong>both Admin and Contributor</strong> privileges. Use the following credentials to log in:</p>`;
+  
+  const credentialsSection = isRoleChange
+    ? `<p>You can now access both panels using your existing credentials.</p>`
+    : `
+      <div style="background-color: #f5f5f5; padding: 20px; border-radius: 5px; margin: 20px 0;">
+        <h3 style="color: #333; margin-top: 0;">Login Credentials</h3>
+        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Password:</strong> <code style="background-color: #e9ecef; padding: 8px 12px; border-radius: 5px; font-size: 16px; font-weight: bold; letter-spacing: 1px;">${password}</code></p>
+      </div>
+      <p><strong>Important:</strong> Please change your password after your first login for security purposes.</p>
+    `;
+  
+  const mailOptions = {
+    from: process.env.EMAIL_USER,
+    to: email,
+    subject,
+    html: `
+      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+        <h2 style="color: #333;">Welcome to Project Showcase</h2>
+        <p>Hello ${name},</p>
+        ${bodyIntro}
+        ${credentialsSection}
+        <div style="background-color: #e3f2fd; padding: 15px; border-radius: 5px; margin: 20px 0;">
+          <h3 style="color: #1976d2; margin-top: 0;">You have access to:</h3>
+          <ul style="margin: 10px 0;">
+            <li><strong>Admin Panel:</strong> <a href="${process.env.NEXTAUTH_URL}/admin/login">${process.env.NEXTAUTH_URL}/admin/login</a></li>
+            <li><strong>Contributor Dashboard:</strong> <a href="${process.env.NEXTAUTH_URL}/contributor/login">${process.env.NEXTAUTH_URL}/contributor/login</a></li>
+          </ul>
+        </div>
+        <p>Best regards,<br>Project Showcase Team</p>
+      </div>
+    `,
+  };
+
+  try {
+    await transporter.sendMail(mailOptions);
+    return { success: true };
+  } catch (error) {
+    console.error('Error sending dual role email with primary transporter:', error);
+    try {
+      const altTransporter = createOutlookTransporter();
+      await altTransporter.sendMail(mailOptions);
+      return { success: true };
+    } catch (altError) {
+      console.error('Error sending dual role email with alternative transporter:', altError);
       return { success: false, error: altError instanceof Error ? altError.message : 'Unknown error' };
     }
   }
