@@ -19,7 +19,7 @@ export const authOptions: NextAuthOptions = {
         if (!ok) return null;
 
         // Determine which panel they're trying to access
-        let requestedPanel = "";
+        let requestedPanel: "admin" | "contributor" | "" = "";
         if (req && req.headers && req.headers.referer) {
           const url = new URL(req.headers.referer);
           const path = url.pathname;
@@ -28,45 +28,75 @@ export const authOptions: NextAuthOptions = {
         }
 
         // Check if user has access to the requested panel
-        // "both" role can access both panels
-        // "admin" role can only access admin panel
-        // "contributor" role can only access contributor panel
-        if (requestedPanel === "admin" && user.role !== "admin" && user.role !== "both") {
-          return null; // No access
+        if (requestedPanel === "admin") {
+          if (user.role !== "admin" && user.role !== "both") {
+            return null; // No access to admin panel
+          }
         }
-        if (requestedPanel === "contributor" && user.role !== "contributor" && user.role !== "both") {
-          return null; // No access
+        if (requestedPanel === "contributor") {
+          if (user.role !== "contributor" && user.role !== "both") {
+            return null; // No access to contributor panel
+          }
         }
 
         return { 
           id: user._id, 
           name: user.name || user.email, 
           email: user.email, 
-          role: user.role 
+          role: user.role,
+          loginContext: requestedPanel || undefined
         } as User;
       },
     }),
   ],
+  secret: process.env.NEXTAUTH_SECRET,
   session: { 
     strategy: "jwt",
-    maxAge: 24 * 60 * 60, // 24 hours
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+    updateAge: 24 * 60 * 60, // Update session every 24 hours
   },
   jwt: {
-    maxAge: 24 * 60 * 60, // 24 hours
+    maxAge: 30 * 24 * 60 * 60, // 30 days
   },
-  pages: { signIn: "/admin/login" },
+  cookies: {
+    sessionToken: {
+      name: `next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: 'lax',
+        path: '/',
+        secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
+        maxAge: 30 * 24 * 60 * 60, // 30 days
+      },
+    },
+  },
+  pages: { 
+    signIn: "/admin/login",
+    error: "/admin/login",
+  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
         token.role = user.role;
+        token.loginContext = user.loginContext;
+        token.sub = user.id; // Store user ID in token
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
+        session.user.id = token.sub;
         session.user.role = token.role;
+        session.user.loginContext = token.loginContext;
       }
       return session;
+    },
+    async redirect({ url, baseUrl }) {
+      // Allows relative callback URLs
+      if (url.startsWith("/")) return `${baseUrl}${url}`;
+      // Allows callback URLs on the same origin
+      else if (new URL(url).origin === baseUrl) return url;
+      return baseUrl;
     },
   },
 };

@@ -1,26 +1,50 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signIn } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 export default function ContributorLogin() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+
+  // Show error from URL parameter
+  useEffect(() => {
+    const errorParam = searchParams.get("error");
+    if (errorParam === "CredentialsSignin") {
+      setError("Invalid email or password. Please check your credentials.");
+    }
+  }, [searchParams]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const res = await signIn("credentials", {
-      username: email,
-      password,
-      redirect: false,
-    });
-    if (res?.ok) router.push("/contributor/dashboard");
-    else setError("Invalid credentials");
+    setLoading(true);
+
+    try {
+      const res = await signIn("credentials", {
+        username: email,
+        password,
+        redirect: false,
+      });
+
+      if (res?.error) {
+        setError("Invalid email or password. Please check your credentials.");
+        setLoading(false);
+      } else if (res?.ok) {
+        const callbackUrl = searchParams.get("callbackUrl") || "/contributor/dashboard";
+        router.push(callbackUrl);
+        router.refresh();
+      }
+    } catch (err) {
+      setError("An error occurred during login. Please try again.");
+      setLoading(false);
+    }
   }
 
   return (
@@ -52,7 +76,13 @@ export default function ContributorLogin() {
           </button>
         </div>
         {error ? <p className="text-red-600 text-sm">{error}</p> : null}
-        <button type="submit" className="w-full rounded-md bg-black text-white py-2">Sign In</button>
+        <button 
+          type="submit" 
+          disabled={loading}
+          className="w-full rounded-md bg-black text-white py-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? "Signing in..." : "Sign In"}
+        </button>
         <div className="text-center">
           <Link href="/contributor/forgot-password" className="text-blue-600 hover:text-blue-500 text-sm">
             Forgot Password?

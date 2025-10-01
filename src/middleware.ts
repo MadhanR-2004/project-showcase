@@ -9,6 +9,7 @@ export default withAuth(
     // Admin panel routes
     if (path.startsWith("/admin") && !path.startsWith("/admin/login") && !path.startsWith("/admin/forgot-password")) {
       const role = token?.role as string;
+      // Allow access if user has admin or both role
       if (role !== "admin" && role !== "both") {
         return NextResponse.redirect(new URL("/admin/login", req.url));
       }
@@ -17,6 +18,7 @@ export default withAuth(
     // Contributor panel routes
     if (path.startsWith("/contributor") && !path.startsWith("/contributor/login") && !path.startsWith("/contributor/forgot-password")) {
       const role = token?.role as string;
+      // Allow access if user has contributor or both role
       if (role !== "contributor" && role !== "both") {
         return NextResponse.redirect(new URL("/contributor/login", req.url));
       }
