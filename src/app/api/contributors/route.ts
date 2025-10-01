@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../auth/[...nextauth]/route";
+import { adminAuthOptions } from "../auth/admin/[...nextauth]/route";
 import { createContributor, ContributorDoc } from "../../../lib/contributors";
 import { createUser, findUserByEmail, listContributors } from "../../../lib/users";
 import { sendContributorCredentials } from "../../../lib/email";
@@ -8,8 +8,8 @@ import { generateReadablePassword } from "../../../lib/password-generator";
 import bcrypt from "bcryptjs";
 
 export async function GET(req: NextRequest) {
-  // Require authentication
-  const session = await getServerSession(authOptions);
+  // Require admin authentication
+  const session = await getServerSession(adminAuthOptions);
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -30,8 +30,8 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  // Require authentication
-  const session = await getServerSession(authOptions);
+  // Require admin authentication
+  const session = await getServerSession(adminAuthOptions);
   if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

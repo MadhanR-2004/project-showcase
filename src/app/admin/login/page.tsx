@@ -30,7 +30,8 @@ function AdminLoginForm() {
       const res = await signIn("credentials", {
         username: email,
         password,
-        redirect: false, // Handle redirect manually for better error handling
+        redirect: false,
+        callbackUrl: "/admin",
       });
 
       if (res?.error) {
@@ -44,12 +45,7 @@ function AdminLoginForm() {
         await new Promise(resolve => setTimeout(resolve, 500));
         
         // Use window.location for more reliable redirect on mobile
-        if (typeof window !== "undefined") {
-          window.location.href = callbackUrl;
-        } else {
-          router.push(callbackUrl);
-          router.refresh();
-        }
+        window.location.href = callbackUrl;
       } else {
         // Handle unexpected response
         setError("Login failed. Please try again.");

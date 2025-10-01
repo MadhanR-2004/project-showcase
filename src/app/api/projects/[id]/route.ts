@@ -4,7 +4,8 @@ import { getProjectById, updateProject } from "../../../../lib/projects";
 import { Project } from "../../../../lib/types";
 import { ObjectId } from "mongodb";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import { adminAuthOptions } from "../../auth/admin/[...nextauth]/route";
+import { contributorAuthOptions } from "../../auth/contributor/[...nextauth]/route";
 import { removeFileReference, deleteFileIfOrphaned } from "../../../../lib/gridfs";
 
 export async function GET(
@@ -20,10 +21,13 @@ export async function GET(
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   // Auth: allow admin or contributor associated with this project
-  const session = await getServerSession(authOptions);
+  const adminSession = await getServerSession(adminAuthOptions);
+  const contributorSession = await getServerSession(contributorAuthOptions);
+  const session = adminSession || contributorSession;
+  
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  const role = (session.user as { role?: string } | undefined)?.role;
-  const email = (session.user as { email?: string } | undefined)?.email;
+  const role = session.user?.role;
+  const email = session.user?.email;
 
   const db = await getDb();
   const body = (await req.json()) as Partial<Project>;

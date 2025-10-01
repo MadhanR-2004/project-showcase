@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { authOptions } from "../../auth/[...nextauth]/route";
+import { adminAuthOptions } from "../../auth/admin/[...nextauth]/route";
 import { cleanupOrphanedFiles } from "../../../../lib/gridfs";
 
 /**
@@ -8,8 +8,8 @@ import { cleanupOrphanedFiles } from "../../../../lib/gridfs";
  * Only accessible by admin users
  */
 export async function POST(req: NextRequest) {
-  // Check authentication
-  const session = await getServerSession(authOptions);
+  // Check admin authentication
+  const session = await getServerSession(adminAuthOptions);
   const userRole = session?.user?.role;
   if (!session || !userRole || (userRole !== "admin" && userRole !== "both")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });

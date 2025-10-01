@@ -31,6 +31,7 @@ function ContributorLoginForm() {
         username: email,
         password,
         redirect: false,
+        callbackUrl: "/contributor/dashboard",
       });
 
       if (res?.error) {
@@ -43,12 +44,7 @@ function ContributorLoginForm() {
         await new Promise(resolve => setTimeout(resolve, 500));
         
         // Use window.location for more reliable redirect on mobile
-        if (typeof window !== "undefined") {
-          window.location.href = callbackUrl;
-        } else {
-          router.push(callbackUrl);
-          router.refresh();
-        }
+        window.location.href = callbackUrl;
       } else {
         // Handle unexpected response
         setError("Login failed. Please try again.");
