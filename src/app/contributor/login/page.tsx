@@ -1,10 +1,10 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { signIn } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function ContributorLogin() {
+function ContributorLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [email, setEmail] = useState("");
@@ -90,6 +90,18 @@ export default function ContributorLogin() {
         </div>
       </form>
     </div>
+  );
+}
+
+export default function ContributorLogin() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="text-center">Loading...</div>
+      </div>
+    }>
+      <ContributorLoginForm />
+    </Suspense>
   );
 }
 
