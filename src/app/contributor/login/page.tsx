@@ -38,10 +38,24 @@ function ContributorLoginForm() {
         setLoading(false);
       } else if (res?.ok) {
         const callbackUrl = searchParams.get("callbackUrl") || "/contributor/dashboard";
-        router.push(callbackUrl);
-        router.refresh();
+        
+        // Add a small delay to ensure session is fully established (especially important on mobile)
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Use window.location for more reliable redirect on mobile
+        if (typeof window !== "undefined") {
+          window.location.href = callbackUrl;
+        } else {
+          router.push(callbackUrl);
+          router.refresh();
+        }
+      } else {
+        // Handle unexpected response
+        setError("Login failed. Please try again.");
+        setLoading(false);
       }
     } catch (err) {
+      console.error("Login error:", err);
       setError("An error occurred during login. Please try again.");
       setLoading(false);
     }

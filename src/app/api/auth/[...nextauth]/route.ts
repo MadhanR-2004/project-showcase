@@ -60,16 +60,21 @@ export const authOptions: NextAuthOptions = {
   },
   cookies: {
     sessionToken: {
-      name: `next-auth.session-token`,
+      name: process.env.NODE_ENV === 'production' 
+        ? '__Secure-next-auth.session-token' 
+        : 'next-auth.session-token',
       options: {
         httpOnly: true,
         sameSite: 'lax',
         path: '/',
-        secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-        maxAge: 30 * 24 * 60 * 60, // 30 days
+        secure: process.env.NODE_ENV === 'production',
+        domain: process.env.NODE_ENV === 'production' 
+          ? process.env.NEXTAUTH_URL?.replace(/https?:\/\//, '').split('/')[0]
+          : undefined,
       },
     },
   },
+  useSecureCookies: process.env.NODE_ENV === 'production',
   pages: { 
     signIn: "/admin/login",
     error: "/admin/login",
