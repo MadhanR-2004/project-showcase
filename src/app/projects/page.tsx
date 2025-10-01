@@ -1,3 +1,5 @@
+"use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { BackgroundGradient } from "../../components/ui/background-gradient";
@@ -17,16 +19,29 @@ type ApiProject = {
   };
 };
 
-async function fetchProjects() {
-  const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_URL || ""}/api/projects`, {
-    next: { revalidate: 60 },
-  });
-  if (!res.ok) return { projects: [] as ApiProject[] };
-  return (await res.json()) as { projects: ApiProject[] };
-}
+export default function ProjectsPage() {
+  const [projects, setProjects] = useState<ApiProject[]>([]);
+  const [loading, setLoading] = useState(true);
 
-export default async function ProjectsPage() {
-  const { projects } = await fetchProjects();
+  useEffect(() => {
+    async function fetchProjects() {
+      try {
+        const res = await fetch("/api/projects");
+        if (!res.ok) {
+          setProjects([]);
+          return;
+        }
+        const data = await res.json();
+        setProjects(data.projects || []);
+      } catch (error) {
+        console.error("Failed to fetch projects:", error);
+        setProjects([]);
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProjects();
+  }, []);
 
   // Helper to extract YouTube ID
   function extractYouTubeId(input: string | undefined | null): string | null {
@@ -45,6 +60,14 @@ export default async function ProjectsPage() {
       }
     } catch {}
     return null;
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen px-6 py-16 bg-black text-white flex items-center justify-center">
+        <div className="text-xl">Loading projects...</div>
+      </div>
+    );
   }
 
   return (
