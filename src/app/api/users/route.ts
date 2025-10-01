@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { adminAuthOptions } from "../auth/admin/[...nextauth]/route";
+import { authOptions } from "../auth/[...nextauth]/route";
 import { listUsers } from "../../../lib/users";
 
 /**
@@ -9,7 +9,7 @@ import { listUsers } from "../../../lib/users";
 export async function GET() {
   try {
     // Require admin authentication
-    const session = await getServerSession(adminAuthOptions);
+    const session = await getServerSession(authOptions);
     if (!session) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }

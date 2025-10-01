@@ -1,17 +1,15 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
-import { adminAuthOptions } from "../../auth/admin/[...nextauth]/route";
-import { contributorAuthOptions } from "../../auth/contributor/[...nextauth]/route";
+import { authOptions } from "../../auth/[...nextauth]/route";
 import { Readable } from "node:stream";
 import { getBucket } from "../../../../lib/gridfs";
 
 export async function POST(req: NextRequest) {
-  // Require authentication from either admin or contributor
-  const adminSession = await getServerSession(adminAuthOptions);
-  const contributorSession = await getServerSession(contributorAuthOptions);
+  // Require authentication
+  const session = await getServerSession(authOptions);
   
-  if (!adminSession && !contributorSession) {
+  if (!session) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

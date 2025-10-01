@@ -1,17 +1,32 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 function AdminLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Redirect if already logged in as admin
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      const role = (session.user as { role?: string })?.role;
+      const loginContext = (session.user as { loginContext?: string })?.loginContext;
+      
+      // If already logged in as admin, redirect to admin dashboard
+      if (loginContext === "admin" && (role === "admin" || role === "both")) {
+        const callbackUrl = searchParams.get("callbackUrl") || "/admin";
+        router.replace(callbackUrl);
+      }
+    }
+  }, [status, session, router, searchParams]);
 
   // Show error from URL parameter
   useEffect(() => {
@@ -27,6 +42,7 @@ function AdminLoginForm() {
     setLoading(true);
 
     try {
+      // Use the admin-specific auth endpoint
       const res = await signIn("credentials", {
         username: email,
         password,
@@ -41,10 +57,7 @@ function AdminLoginForm() {
         // Successful login - redirect to admin dashboard
         const callbackUrl = searchParams.get("callbackUrl") || "/admin";
         
-        // Add a small delay to ensure session is fully established (especially important on mobile)
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Use window.location for more reliable redirect on mobile
+        // Force a hard redirect to ensure session is properly loaded
         window.location.href = callbackUrl;
       } else {
         // Handle unexpected response

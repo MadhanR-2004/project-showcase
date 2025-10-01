@@ -28,12 +28,20 @@ async function handleDeleteFile(fileUrl: string) {
       return;
     }
 
-    const deleteRes = await fetch(`/api/media/${fileId}`, {
+    const deleteRes = await fetch(`/api/media/delete`, {
       method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileId }),
     });
 
     if (!deleteRes.ok) {
-      console.error(`Failed to delete file ${fileId}`);
+      const errorData = await deleteRes.json();
+      // Only log error if it's not "File not found" (file might be already deleted)
+      if (errorData.error !== "File not found") {
+        console.error(`Failed to delete file ${fileId}:`, errorData.error);
+      } else {
+        console.log(`File ${fileId} already deleted or not found`);
+      }
     } else {
       console.log(`Successfully deleted file ${fileId}`);
     }

@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import LogoutButton from "./LogoutButton";
 import Link from "next/link";
 import Image from "next/image";
+import { PanelSwitcher } from "../../components/PanelSwitcher";
 
 function TabButton({ active, onClick, children }: { active: boolean; onClick: () => void; children: React.ReactNode }) {
   return (
@@ -55,6 +56,9 @@ export default function AdminTabsPage() {
       <div>
         {tab === "projects" ? <ProjectsTab /> : <UsersTab />}
       </div>
+      
+      {/* Panel Switcher for users with "both" role */}
+      <PanelSwitcher currentPanel="admin" />
     </div>
   );
 }

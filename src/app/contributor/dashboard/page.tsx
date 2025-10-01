@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSession } from "next-auth/react";
 import LogoutButton from "./LogoutButton";
 import Link from "next/link";
+import { PanelSwitcher } from "../../../components/PanelSwitcher";
 
 type Project = {
   _id?: string;
@@ -18,7 +19,7 @@ export default function ContributorDashboard() {
 
   const isContributor = useMemo(() => {
     const role = (session?.user as { role?: string } | undefined)?.role;
-    return role === "contributor" || role === "editor"; // allow editor too if needed
+    return role === "contributor" || role === "both"; // Fixed: allow "both" role
   }, [session]);
 
   // Determine contributorId by matching session email with project contributor emails via API.
@@ -55,7 +56,7 @@ export default function ContributorDashboard() {
 
   if (status === "loading") return null;
   if (!session || !isContributor) {
-    if (typeof window !== "undefined") window.location.href = "/contributor/login";
+    if (typeof window !== "undefined") window.location.href = "/login";
     return null;
   }
 
@@ -73,7 +74,7 @@ export default function ContributorDashboard() {
             <p className="text-sm text-zinc-600 mb-3">{p.shortDescription}</p>
             <div className="flex gap-2">
               {p._id ? (
-                <Link href={`/admin/projects/${p._id}`} className="text-blue-600 hover:text-blue-500 text-sm">Edit</Link>
+                <Link href={`/contributor/projects/${p._id}`} className="text-blue-600 hover:text-blue-500 text-sm">Edit</Link>
               ) : null}
               {p._id ? (
                 <Link href={`/projects/${p._id}`} className="text-zinc-700 hover:text-zinc-900 text-sm">View</Link>
@@ -85,6 +86,9 @@ export default function ContributorDashboard() {
           <div className="col-span-full text-center text-zinc-600">No associated projects found.</div>
         )}
       </div>
+      
+      {/* Panel Switcher for users with "both" role */}
+      <PanelSwitcher currentPanel="contributor" />
     </div>
   );
 }

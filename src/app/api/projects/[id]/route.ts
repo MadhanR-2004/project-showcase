@@ -4,8 +4,7 @@ import { getProjectById, updateProject } from "../../../../lib/projects";
 import { Project } from "../../../../lib/types";
 import { ObjectId } from "mongodb";
 import { getServerSession } from "next-auth";
-import { adminAuthOptions } from "../../auth/admin/[...nextauth]/route";
-import { contributorAuthOptions } from "../../auth/contributor/[...nextauth]/route";
+import { authOptions } from "../../auth/[...nextauth]/route";
 import { removeFileReference, deleteFileIfOrphaned } from "../../../../lib/gridfs";
 
 export async function GET(
@@ -21,9 +20,7 @@ export async function GET(
 export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   // Auth: allow admin or contributor associated with this project
-  const adminSession = await getServerSession(adminAuthOptions);
-  const contributorSession = await getServerSession(contributorAuthOptions);
-  const session = adminSession || contributorSession;
+  const session = await getServerSession(authOptions);
   
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   const role = session.user?.role;
@@ -34,24 +31,27 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ id: 
   body.updatedAt = new Date().toISOString();
 
   // If not admin, verify that this contributor is part of the project
-  if (role !== "admin") {
-    // Get contributor id by email
+  if (role !== "admin" && role !== "both") {
+    // Get contributor id by email from users collection (unified authentication)
     let contributorId: string | null = null;
     try {
-      const res = await fetch(`${process.env.NEXTAUTH_URL || ""}/api/contributors?email=${encodeURIComponent(email || "")}`);
-      const data = await res.json();
-      contributorId = Array.isArray(data.contributors) && data.contributors[0]?._id ? data.contributors[0]._id : null;
-    } catch {
+      const user = await db.collection("users").findOne({ 
+        email: email,
+        role: { $in: ["contributor", "both"] }
+      });
+      contributorId = user?._id ? user._id.toString() : null;
+    } catch (err) {
+      console.error("Error fetching contributor:", err);
       contributorId = null;
     }
     if (!contributorId) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden: You are not registered as a contributor" }, { status: 403 });
     }
     // Ensure the target project contains this contributor id
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const exists = await db.collection<Project>("projects").findOne({ _id: new ObjectId(id) } as any);
     if (!exists || !Array.isArray(exists.contributors) || !exists.contributors.some((c) => c.id === contributorId)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      return NextResponse.json({ error: "Forbidden: You are not authorized to edit this project" }, { status: 403 });
     }
   }
   

@@ -8,16 +8,10 @@ export function SparklesPreview() {
     <div className="h-screen w-full bg-black flex flex-col items-center justify-center overflow-hidden relative">
       <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
         <Link
-          href="/admin/login"
-          className="inline-flex items-center rounded-full bg-white/90 text-black px-4 py-2 text-xs font-semibold hover:bg-white transition-colors"
+          href="/login"
+          className="inline-flex items-center rounded-full bg-white/90 text-black px-6 py-2 text-sm font-semibold hover:bg-white transition-colors"
         >
-          Admin
-        </Link>
-        <Link
-          href="/contributor/login"
-          className="inline-flex items-center rounded-full bg-white/80 text-black px-4 py-2 text-xs font-semibold hover:bg-white transition-colors"
-        >
-          Contributor
+          Login
         </Link>
       </div>
       <div>

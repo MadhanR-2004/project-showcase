@@ -119,12 +119,12 @@ export default function AdminCreateProject() {
   }[]>([]);
   const [contributorSearches, setContributorSearches] = useState<string[]>([]);
 
-  const isAdmin = !!session && (session.user as { role?: string })?.role === "admin";
+  const isAdmin = !!session && ((session.user as { role?: string })?.role === "admin" || (session.user as { role?: string })?.role === "both");
 
   // Redirect if not admin; keep hooks order consistent
   useEffect(() => {
     if (status !== "loading" && !isAdmin) {
-      router.replace("/admin/login");
+      router.replace("/login");
     }
   }, [status, isAdmin, router]);
 
@@ -458,6 +458,22 @@ export default function AdminCreateProject() {
               }
             }}
           />
+          {thumbnailUrl && (
+            <div className="mt-2 flex items-center gap-2">
+              <Image 
+                src={thumbnailUrl} 
+                alt="Thumbnail URL Preview" 
+                width={100} 
+                height={100} 
+                className="w-24 h-24 object-cover rounded border"
+                unoptimized
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+              <span className="text-xs text-green-600">Preview of URL image</span>
+            </div>
+          )}
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Contributors <span className="text-red-600">*</span></label>

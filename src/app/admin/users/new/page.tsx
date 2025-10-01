@@ -14,12 +14,20 @@ async function handleDeleteFile(fileUrl: string) {
       return;
     }
 
-    const deleteRes = await fetch(`/api/media/${fileId}`, {
+    const deleteRes = await fetch(`/api/media/delete`, {
       method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileId }),
     });
 
     if (!deleteRes.ok) {
-      console.error(`Failed to delete file ${fileId}`);
+      const errorData = await deleteRes.json();
+      // Only log error if it's not "File not found" (file might be already deleted)
+      if (errorData.error !== "File not found") {
+        console.error(`Failed to delete file ${fileId}:`, errorData.error);
+      } else {
+        console.log(`File ${fileId} already deleted or not found`);
+      }
     } else {
       console.log(`Successfully deleted file ${fileId}`);
     }
@@ -412,21 +420,39 @@ export default function CreateUserPage() {
                 </div>
               ) : avatarUrlText ? (
                 // External URL
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    className="flex-1 border rounded-md px-3 py-2"
-                    value={avatarUrlText}
-                    onChange={(e) => setAvatarUrlText(e.target.value)}
-                    placeholder="https://example.com/avatar.jpg"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setAvatarUrlText("")}
-                    className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
-                  >
-                    Clear
-                  </button>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      className="flex-1 border rounded-md px-3 py-2"
+                      value={avatarUrlText}
+                      onChange={(e) => setAvatarUrlText(e.target.value)}
+                      placeholder="https://example.com/avatar.jpg"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setAvatarUrlText("")}
+                      className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  {avatarUrlText && (
+                    <div className="flex items-center gap-2">
+                      <Image
+                        src={avatarUrlText}
+                        alt="Avatar URL Preview"
+                        width={64}
+                        height={64}
+                        className="w-16 h-16 object-cover rounded-full border"
+                        unoptimized
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                      <span className="text-xs text-green-600">Preview of URL image</span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 // No avatar set - show both options
@@ -499,21 +525,39 @@ export default function CreateUserPage() {
                 </div>
               ) : profileUrlText ? (
                 // External URL
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    className="flex-1 border rounded-md px-3 py-2"
-                    value={profileUrlText}
-                    onChange={(e) => setProfileUrlText(e.target.value)}
-                    placeholder="https://linkedin.com/in/username"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => setProfileUrlText("")}
-                    className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
-                  >
-                    Clear
-                  </button>
+                <div className="space-y-2">
+                  <div className="flex gap-2">
+                    <input
+                      type="url"
+                      className="flex-1 border rounded-md px-3 py-2"
+                      value={profileUrlText}
+                      onChange={(e) => setProfileUrlText(e.target.value)}
+                      placeholder="https://linkedin.com/in/username"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setProfileUrlText("")}
+                      className="px-3 py-1 bg-red-600 text-white rounded hover:bg-red-700"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  {profileUrlText && profileUrlText.match(/\.(jpg|jpeg|png|gif|webp)$/i) && (
+                    <div className="flex items-center gap-2">
+                      <Image
+                        src={profileUrlText}
+                        alt="Profile URL Preview"
+                        width={80}
+                        height={80}
+                        className="w-20 h-20 object-cover rounded border"
+                        unoptimized
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                      <span className="text-xs text-green-600">Preview of image URL</span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 // No profile set - show both options

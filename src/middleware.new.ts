@@ -38,11 +38,6 @@ export async function middleware(req: NextRequest) {
     return NextResponse.redirect(redirectUrl);
   }
 
-  // Redirect old forgot-password pages to unified forgot-password
-  if (path === "/admin/forgot-password" || path === "/contributor/forgot-password") {
-    return NextResponse.redirect(new URL("/forgot-password", req.url));
-  }
-
   // Admin panel routes protection
   if (path.startsWith("/admin") && !path.startsWith("/admin/login") && !path.startsWith("/admin/forgot-password") && !path.startsWith("/admin/create-admin")) {
     if (!token) {

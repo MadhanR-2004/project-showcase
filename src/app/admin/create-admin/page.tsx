@@ -10,7 +10,7 @@ export default function CreateAdminPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  const isAdmin = !!session && (session.user as { role?: string })?.role === "admin";
+  const isAdmin = !!session && ((session.user as { role?: string })?.role === "admin" || (session.user as { role?: string })?.role === "both");
 
   if (status === "loading") return <div>Loading...</div>;
   if (!isAdmin) return <div>Access denied. Admin privileges required.</div>;

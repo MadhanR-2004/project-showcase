@@ -1,17 +1,32 @@
 "use client";
 import { useState, useEffect, Suspense } from "react";
-import { signIn } from "next-auth/react";
+import { signIn, useSession } from "next-auth/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 
 function ContributorLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { data: session, status } = useSession();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Redirect if already logged in as contributor
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      const role = (session.user as { role?: string })?.role;
+      const loginContext = (session.user as { loginContext?: string })?.loginContext;
+      
+      // If already logged in as contributor, redirect to contributor dashboard
+      if (loginContext === "contributor" && (role === "contributor" || role === "both")) {
+        const callbackUrl = searchParams.get("callbackUrl") || "/contributor/dashboard";
+        router.replace(callbackUrl);
+      }
+    }
+  }, [status, session, router, searchParams]);
 
   // Show error from URL parameter
   useEffect(() => {
@@ -27,6 +42,7 @@ function ContributorLoginForm() {
     setLoading(true);
 
     try {
+      // Use the contributor-specific auth endpoint
       const res = await signIn("credentials", {
         username: email,
         password,
@@ -40,10 +56,7 @@ function ContributorLoginForm() {
       } else if (res?.ok) {
         const callbackUrl = searchParams.get("callbackUrl") || "/contributor/dashboard";
         
-        // Add a small delay to ensure session is fully established (especially important on mobile)
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Use window.location for more reliable redirect on mobile
+        // Force a hard redirect to ensure session is properly loaded
         window.location.href = callbackUrl;
       } else {
         // Handle unexpected response

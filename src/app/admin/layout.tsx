@@ -1,8 +1,6 @@
-"use client";
-import { AdminSessionProvider } from "./AdminSessionProvider";
-
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <AdminSessionProvider>{children}</AdminSessionProvider>;
+  // No need for separate session provider - using unified session from root layout
+  return <>{children}</>;
 }
 
 

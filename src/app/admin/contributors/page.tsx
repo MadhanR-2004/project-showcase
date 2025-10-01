@@ -46,7 +46,7 @@ export default function ContributorsAdminPage() {
   const userHasAdminRole = (user: unknown): user is SessionUserWithRole => {
     return !!user && typeof user === "object" && "role" in user && typeof (user as { role: unknown }).role === "string";
   };
-  if (!session || !userHasAdminRole(session.user) || session.user.role !== "admin") return null;
+  if (!session || !userHasAdminRole(session.user) || (session.user.role !== "admin" && session.user.role !== "both")) return null;
 
   async function uploadMedia(file: File) {
     const form = new FormData();
