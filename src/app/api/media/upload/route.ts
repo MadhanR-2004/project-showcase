@@ -1,9 +1,17 @@
 
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../../auth/[...nextauth]/route";
 import { Readable } from "node:stream";
 import { getBucket } from "../../../../lib/gridfs";
 
 export async function POST(req: NextRequest) {
+  // Require authentication
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const bucket = await getBucket();
   // Try to use formData, but only if it succeeds synchronously (if it throws, fallback)
   let form: FormData | undefined = undefined;

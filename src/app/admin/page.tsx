@@ -36,8 +36,7 @@ export default function AdminTabsPage() {
   });
 
   if (status === "loading") return null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userRole = (session?.user as any)?.role;
+  const userRole = session?.user?.role;
   if (!session || !userRole || (userRole !== "admin" && userRole !== "both")) {
     if (typeof window !== "undefined") window.location.href = "/admin/login";
     return null;

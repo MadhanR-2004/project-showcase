@@ -74,8 +74,7 @@ export default function EditUserPage() {
   const [avatarRemoved, setAvatarRemoved] = useState(false);
   const [profileRemoved, setProfileRemoved] = useState(false);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userRole = (session?.user as any)?.role;
+  const userRole = session?.user?.role;
   const isAdmin = userRole === "admin" || userRole === "both";
 
   // Prevent navigation during save

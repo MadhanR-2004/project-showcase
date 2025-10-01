@@ -61,8 +61,7 @@ export default function CreateUserPage() {
   const [avatarFileKey, setAvatarFileKey] = useState(0);
   const [profileFileKey, setProfileFileKey] = useState(0);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userRole = (session?.user as any)?.role;
+  const userRole = session?.user?.role;
   const isAdmin = userRole === "admin" || userRole === "both";
 
   // Clean up preview URLs on unmount to prevent memory leaks

@@ -1,24 +1,7 @@
-import NextAuth, { NextAuthOptions } from "next-auth";
+import NextAuth, { NextAuthOptions, User } from "next-auth";
 import { JWT } from "next-auth/jwt";
 import Credentials from "next-auth/providers/credentials";
 import { findUserByEmail, verifyPassword } from "../../../../lib/users";
-
-interface ExtendedUser {
-  id: string;
-  name: string;
-  email: string;
-  role: string;
-}
-
-interface ExtendedToken {
-  role: string;
-}
-
-interface ExtendedSession {
-  user: {
-    role: string;
-  };
-}
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -60,21 +43,29 @@ export const authOptions: NextAuthOptions = {
           name: user.name || user.email, 
           email: user.email, 
           role: user.role 
-        } as ExtendedUser;
+        } as User;
       },
     }),
   ],
-  session: { strategy: "jwt" },
+  session: { 
+    strategy: "jwt",
+    maxAge: 24 * 60 * 60, // 24 hours
+  },
+  jwt: {
+    maxAge: 24 * 60 * 60, // 24 hours
+  },
   pages: { signIn: "/admin/login" },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
-        (token as JWT & ExtendedToken).role = (user as ExtendedUser).role;
+        token.role = user.role;
       }
       return token;
     },
     async session({ session, token }) {
-      (session.user as ExtendedSession['user'] & { role: string }).role = (token as JWT & ExtendedToken).role;
+      if (session.user) {
+        session.user.role = token.role;
+      }
       return session;
     },
   },

@@ -10,8 +10,7 @@ import { cleanupOrphanedFiles } from "../../../../lib/gridfs";
 export async function POST(req: NextRequest) {
   // Check authentication
   const session = await getServerSession(authOptions);
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const userRole = (session?.user as any)?.role;
+  const userRole = session?.user?.role;
   if (!session || !userRole || (userRole !== "admin" && userRole !== "both")) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

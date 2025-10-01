@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "../auth/[...nextauth]/route";
 import { createContributor, ContributorDoc } from "../../../lib/contributors";
 import { createUser, findUserByEmail, listContributors } from "../../../lib/users";
 import { sendContributorCredentials } from "../../../lib/email";
@@ -6,6 +8,12 @@ import { generateReadablePassword } from "../../../lib/password-generator";
 import bcrypt from "bcryptjs";
 
 export async function GET(req: NextRequest) {
+  // Require authentication
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { searchParams } = new URL(req.url);
   const email = searchParams.get('email');
   
@@ -22,6 +30,12 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
+  // Require authentication
+  const session = await getServerSession(authOptions);
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const body = await req.json();
   // Backend validation
   if (!body.name || !body.name.trim()) {
