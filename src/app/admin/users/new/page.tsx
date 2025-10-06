@@ -179,9 +179,18 @@ export default function CreateUserPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!name.trim() || !email.trim()) {
-      setMessage({ type: 'error', text: 'Name and email are required' });
+    if (!name.trim()) {
+      setMessage({ type: 'error', text: 'Name is required' });
       return;
+    }
+    
+    // Validate email format if provided
+    if (email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email.trim())) {
+        setMessage({ type: 'error', text: 'Please enter a valid email address' });
+        return;
+      }
     }
 
     // Validate type fields
@@ -197,10 +206,7 @@ export default function CreateUserPage() {
       setMessage({ type: 'error', text: 'Year of passing is required for students' });
       return;
     }
-    if (contributorType === "student" && !registerNo) {
-      setMessage({ type: 'error', text: 'Register number is required for students' });
-      return;
-    }
+    // Register number is now optional, but validate format if provided
     if (contributorType === "student" && registerNo && !/^\d{14}$/.test(registerNo)) {
       setMessage({ type: 'error', text: 'Register number must be exactly 14 digits' });
       return;
@@ -354,7 +360,7 @@ export default function CreateUserPage() {
 
             <div>
               <label className="block text-sm font-medium mb-1">
-                Email <span className="text-red-600">*</span>
+                Email <span className="text-gray-400">(Optional - credentials will be sent if provided)</span>
               </label>
               <input
                 type="email"
@@ -362,7 +368,6 @@ export default function CreateUserPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="Enter email address"
-                required
               />
             </div>
 
@@ -645,7 +650,7 @@ export default function CreateUserPage() {
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Register Number <span className="text-red-600">*</span>
+                    Register Number <span className="text-gray-400">(Optional)</span>
                   </label>
                   <input
                     type="text"
@@ -654,9 +659,8 @@ export default function CreateUserPage() {
                     onChange={(e) => setRegisterNo(e.target.value)}
                     placeholder="e.g., 61781922110060 (14 digits)"
                     maxLength={14}
-                    required
                   />
-                  <p className="text-xs text-gray-500 mt-1">Must be exactly 14 digits</p>
+                  <p className="text-xs text-gray-500 mt-1">If provided, must be exactly 14 digits</p>
                 </div>
               </>
             )}

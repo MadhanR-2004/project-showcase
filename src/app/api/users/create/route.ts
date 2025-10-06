@@ -31,25 +31,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
     }
 
-    if (!email || !email.trim()) {
-      return NextResponse.json({ error: "Email is required" }, { status: 400 });
-    }
-
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json({ error: "Please enter a valid email address" }, { status: 400 });
+    // Email is optional now, but if provided, must be valid
+    if (email && email.trim()) {
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return NextResponse.json({ error: "Please enter a valid email address" }, { status: 400 });
+      }
+      
+      // Check if email already exists
+      const existingUser = await findUserByEmail(email);
+      if (existingUser) {
+        return NextResponse.json({ error: "A user with this email already exists" }, { status: 400 });
+      }
     }
 
     // Validate role
     if (!role || !["admin", "contributor", "both"].includes(role)) {
       return NextResponse.json({ error: "Invalid role. Must be 'admin', 'contributor', or 'both'" }, { status: 400 });
-    }
-
-    // Check if email already exists
-    const existingUser = await findUserByEmail(email);
-    if (existingUser) {
-      return NextResponse.json({ error: "A user with this email already exists" }, { status: 400 });
     }
 
     // Validate contributor-specific fields if role includes contributor
@@ -66,10 +65,8 @@ export async function POST(req: NextRequest) {
         if (!yearOfPassing) {
           return NextResponse.json({ error: "Year of passing is required for students" }, { status: 400 });
         }
-        if (!registerNo) {
-          return NextResponse.json({ error: "Register number is required for students" }, { status: 400 });
-        }
-        if (!/^\d{14}$/.test(registerNo)) {
+        // Register number is now optional
+        if (registerNo && !/^\d{14}$/.test(registerNo)) {
           return NextResponse.json({ error: "Register number must be exactly 14 digits" }, { status: 400 });
         }
       }
@@ -92,10 +89,8 @@ export async function POST(req: NextRequest) {
         if (!yearOfPassing) {
           return NextResponse.json({ error: "Year of passing is required for students" }, { status: 400 });
         }
-        if (!registerNo) {
-          return NextResponse.json({ error: "Register number is required for students" }, { status: 400 });
-        }
-        if (!/^\d{14}$/.test(registerNo)) {
+        // Register number is now optional
+        if (registerNo && !/^\d{14}$/.test(registerNo)) {
           return NextResponse.json({ error: "Register number must be exactly 14 digits" }, { status: 400 });
         }
       }
@@ -111,7 +106,7 @@ export async function POST(req: NextRequest) {
 
     // Prepare user data
     const userData: Omit<import("../../../../lib/users").UserDoc, "_id" | "createdAt" | "updatedAt"> = {
-      email,
+      email: email && email.trim() ? email.trim() : `user_${Date.now()}@temp.local`, // Generate temp email if not provided
       passwordHash,
       role: role as "admin" | "contributor" | "both",
       name,
@@ -148,21 +143,49 @@ export async function POST(req: NextRequest) {
       await addFileReference(profileFileId, user._id, "user_profile");
     }
 
-    // Send credentials via email based on role
+    // Send credentials via email based on role (only if email is provided)
     let emailResult;
-    if (role === "admin") {
-      emailResult = await sendAdminCredentials(email, name, password);
-    } else if (role === "contributor") {
-      emailResult = await sendContributorCredentials(email, name, password);
-    } else if (role === "both") {
-      emailResult = await sendDualRoleCredentials(email, name, password);
-    }
+    const hasValidEmail = email && email.trim() && !email.includes('@temp.local');
+    
+    if (hasValidEmail) {
+      if (role === "admin") {
+        emailResult = await sendAdminCredentials(email, name, password);
+      } else if (role === "contributor") {
+        emailResult = await sendContributorCredentials(email, name, password);
+      } else if (role === "both") {
+        emailResult = await sendDualRoleCredentials(email, name, password);
+      }
 
-    if (!emailResult?.success) {
-      console.error("Failed to send credentials email:", emailResult?.error);
+      if (!emailResult?.success) {
+        console.error("Failed to send credentials email:", emailResult?.error);
+        return NextResponse.json({ 
+          success: true,
+          warning: "User created successfully, but failed to send credentials email. Please notify the user manually.",
+          user: { 
+            id: user._id, 
+            email: user.email, 
+            name: user.name,
+            role: user.role 
+          },
+          password // Return password so admin can manually share it
+        }, { status: 201 });
+      }
+      
       return NextResponse.json({ 
-        success: true,
-        warning: "User created successfully, but failed to send credentials email. Please notify the user manually.",
+        success: true, 
+        message: `User created successfully and credentials sent to ${email}`,
+        user: { 
+          id: user._id, 
+          email: user.email, 
+          name: user.name,
+          role: user.role 
+        }
+      });
+    } else {
+      // No email provided or temp email
+      return NextResponse.json({ 
+        success: true, 
+        message: "User created successfully. No email was provided so credentials were not sent.",
         user: { 
           id: user._id, 
           email: user.email, 
@@ -172,17 +195,6 @@ export async function POST(req: NextRequest) {
         password // Return password so admin can manually share it
       }, { status: 201 });
     }
-
-    return NextResponse.json({ 
-      success: true, 
-      message: `User created successfully and credentials sent to ${email}`,
-      user: { 
-        id: user._id, 
-        email: user.email, 
-        name: user.name,
-        role: user.role 
-      }
-    });
 
   } catch (error) {
     console.error("Error creating user:", error);

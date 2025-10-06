@@ -49,17 +49,34 @@ export async function PUT(
       profileUrl
     } = body;
 
-    // Get existing user to check for role changes
+    // Get existing user to check for role changes and email changes
     const existingUser = await getUserById(id);
     if (!existingUser) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
     
     const roleChanged = existingUser.role !== role;
+    const emailChanged = existingUser.email !== email;
 
     // Validation
     if (!name || !name.trim()) {
       return NextResponse.json({ error: "Name is required" }, { status: 400 });
+    }
+    
+    // Validate email if provided and changed
+    if (email && email.trim() && emailChanged) {
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return NextResponse.json({ error: "Please enter a valid email address" }, { status: 400 });
+      }
+      
+      // Check if email already exists for another user
+      const { findUserByEmail } = await import("../../../../lib/users");
+      const userWithEmail = await findUserByEmail(email);
+      if (userWithEmail && userWithEmail._id !== id) {
+        return NextResponse.json({ error: "A user with this email already exists" }, { status: 400 });
+      }
     }
 
     if (!role || !["admin", "contributor", "both"].includes(role)) {
@@ -80,10 +97,8 @@ export async function PUT(
         if (!yearOfPassing) {
           return NextResponse.json({ error: "Year of passing is required for students" }, { status: 400 });
         }
-        if (!registerNo) {
-          return NextResponse.json({ error: "Register number is required for students" }, { status: 400 });
-        }
-        if (!/^\d{14}$/.test(registerNo)) {
+        // Register number is now optional
+        if (registerNo && !/^\d{14}$/.test(registerNo)) {
           return NextResponse.json({ error: "Register number must be exactly 14 digits" }, { status: 400 });
         }
       }
@@ -106,10 +121,8 @@ export async function PUT(
         if (!yearOfPassing) {
           return NextResponse.json({ error: "Year of passing is required for students" }, { status: 400 });
         }
-        if (!registerNo) {
-          return NextResponse.json({ error: "Register number is required for students" }, { status: 400 });
-        }
-        if (!/^\d{14}$/.test(registerNo)) {
+        // Register number is now optional
+        if (registerNo && !/^\d{14}$/.test(registerNo)) {
           return NextResponse.json({ error: "Register number must be exactly 14 digits" }, { status: 400 });
         }
       }
@@ -122,6 +135,7 @@ export async function PUT(
     // Prepare update data - Allow empty strings to clear avatar/profile URLs
     const updateData: {
       name: string;
+      email?: string;
       role: "admin" | "contributor" | "both";
       contributorType?: "student" | "staff";
       branch?: "IT" | "ADS";
@@ -137,6 +151,11 @@ export async function PUT(
       avatarUrl: avatarUrl !== undefined ? avatarUrl : undefined,
       profileUrl: profileUrl !== undefined ? profileUrl : undefined,
     };
+    
+    // Include email if provided
+    if (email && email.trim()) {
+      updateData.email = email.trim();
+    }
     
     console.log("Update request - avatarUrl:", avatarUrl, "profileUrl:", profileUrl);
     console.log("updateData:", JSON.stringify(updateData, null, 2));
@@ -166,36 +185,39 @@ export async function PUT(
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Send email notification if role changed
-    if (roleChanged && email) {
+    // Send email notification if role changed or email was added/changed
+    const shouldSendEmail = (roleChanged || emailChanged) && email && email.trim();
+    
+    if (shouldSendEmail) {
       const userName = updatedUser.name || "User";
       let emailResult;
+      const isUpdate = true; // This is an update, not a new account
       
       if (role === "admin") {
         emailResult = await sendAdminCredentials(
           email, 
           userName, 
           "", // No password since not creating new account
-          true // Indicate this is a role change
+          isUpdate // Indicate this is a role change/update
         );
       } else if (role === "contributor") {
         emailResult = await sendContributorCredentials(
           email, 
           userName, 
           "", 
-          true
+          isUpdate
         );
       } else if (role === "both") {
         emailResult = await sendDualRoleCredentials(
           email, 
           userName, 
           "", 
-          true
+          isUpdate
         );
       }
 
       if (emailResult && !emailResult.success) {
-        console.error("Failed to send role change email:", emailResult.error);
+        console.error("Failed to send notification email:", emailResult.error);
       }
     }
 
@@ -203,13 +225,23 @@ export async function PUT(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { passwordHash, ...userWithoutPassword } = updatedUser;
 
+    let message = "User updated successfully";
+    if (shouldSendEmail) {
+      if (roleChanged && emailChanged) {
+        message = "User updated successfully. Role change and email update notification sent.";
+      } else if (roleChanged) {
+        message = "User updated successfully. Role change notification sent via email.";
+      } else if (emailChanged) {
+        message = "User updated successfully. Email update notification sent.";
+      }
+    }
+
     return NextResponse.json({ 
       success: true, 
-      message: roleChanged 
-        ? "User updated successfully. Role change notification sent via email." 
-        : "User updated successfully",
+      message,
       user: userWithoutPassword,
-      roleChanged
+      roleChanged,
+      emailChanged
     });
 
   } catch (error) {

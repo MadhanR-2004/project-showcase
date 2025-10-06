@@ -216,9 +216,18 @@ export default function EditUserPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user.name.trim() || !user.email.trim()) {
-      setMessage({ type: 'error', text: 'Name and email are required' });
+    if (!user.name.trim()) {
+      setMessage({ type: 'error', text: 'Name is required' });
       return;
+    }
+    
+    // Validate email if provided
+    if (user.email && user.email.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(user.email.trim())) {
+        setMessage({ type: 'error', text: 'Please enter a valid email address' });
+        return;
+      }
     }
 
     // Validate contributor fields if needed
@@ -413,17 +422,17 @@ export default function EditUserPage() {
 
             <div>
               <label className="block text-sm font-medium mb-1">
-                Email <span className="text-red-600">*</span>
+                Email <span className="text-gray-400">(Optional - notification sent if changed)</span>
               </label>
               <input
                 type="email"
                 name="email"
-                className="w-full border rounded-md px-3 py-2 bg-gray-100"
+                className="w-full border rounded-md px-3 py-2"
                 value={user.email}
-                disabled
-                title="Email cannot be changed"
+                onChange={handleChange}
+                title="You can change the email address"
               />
-              <p className="text-xs text-gray-500 mt-1">Email cannot be changed</p>
+              <p className="text-xs text-gray-500 mt-1">If email is changed, a notification will be sent to the new address</p>
             </div>
 
             <div>
@@ -721,7 +730,7 @@ export default function EditUserPage() {
 
                 <div>
                   <label className="block text-sm font-medium mb-1">
-                    Register Number <span className="text-red-600">*</span>
+                    Register Number <span className="text-gray-400">(Optional)</span>
                   </label>
                   <input
                     type="text"
@@ -731,9 +740,8 @@ export default function EditUserPage() {
                     onChange={handleChange}
                     placeholder="e.g., 61781922110060 (14 digits)"
                     maxLength={14}
-                    required
                   />
-                  <p className="text-xs text-gray-500 mt-1">Must be exactly 14 digits</p>
+                  <p className="text-xs text-gray-500 mt-1">If provided, must be exactly 14 digits</p>
                 </div>
               </>
             )}
