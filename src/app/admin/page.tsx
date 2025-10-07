@@ -76,29 +76,33 @@ function ProjectsTab() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const PAGE_SIZE = 12;
+  
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const res = await fetch(`/api/projects?limit=${PAGE_SIZE}&skip=${(page-1)*PAGE_SIZE}`);
+      const searchParam = debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : "";
+      const res = await fetch(`/api/projects?limit=${PAGE_SIZE}&skip=${(page-1)*PAGE_SIZE}${searchParam}`);
       const data = await res.json();
       setProjects(data.projects || []);
       setTotal(data.total ?? (data.projects?.length || 0));
       setLoading(false);
     })();
-  }, [page]);
+  }, [page, debouncedSearch]);
   
   // Reset to page 1 when search query changes
   useEffect(() => {
     if (page !== 1) setPage(1);
-  }, [searchQuery]);
-  
-  const filteredProjects = projects.filter(p => 
-    (p.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.shortDescription?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-    (p.techStack || []).some(t => (t || "").toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  }, [debouncedSearch]);
   
   return (
     <div>
@@ -118,7 +122,7 @@ function ProjectsTab() {
       {loading ? <p>Loading...</p> : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredProjects.map((p) => (
+            {projects.map((p) => (
               <div key={p._id} className="bg-white dark:bg-zinc-900 rounded-lg shadow border border-zinc-200 dark:border-zinc-700 p-5 flex flex-col gap-3">
                 <div className="flex-1">
                   <h3 className="text-lg font-bold mb-1">{p.title}</h3>
@@ -186,23 +190,34 @@ function UsersTab() {
   const [total, setTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<string>("all");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const PAGE_SIZE = 12;
+  
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
   
   useEffect(() => {
     (async () => {
       setLoading(true);
-      const res = await fetch(`/api/users?limit=${PAGE_SIZE}&skip=${(page-1)*PAGE_SIZE}`);
+      const searchParam = debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : "";
+      const roleParam = roleFilter !== "all" ? `&role=${roleFilter}` : "";
+      const res = await fetch(`/api/users?limit=${PAGE_SIZE}&skip=${(page-1)*PAGE_SIZE}${searchParam}${roleParam}`);
       const data = await res.json();
       setUsers(data.users || []);
       setTotal(data.total ?? (data.users?.length || 0));
       setLoading(false);
     })();
-  }, [page]);
+  }, [page, debouncedSearch, roleFilter]);
   
   // Reset to page 1 when search query or role filter changes
   useEffect(() => {
     if (page !== 1) setPage(1);
-  }, [searchQuery, roleFilter]);
+  }, [debouncedSearch, roleFilter]);
   
   const getRoleBadgeColor = (role: string) => {
     switch(role) {
@@ -212,15 +227,6 @@ function UsersTab() {
       default: return "bg-gray-100 text-gray-700";
     }
   };
-  
-  const filteredUsers = users.filter(u => {
-    const matchesSearch = (u.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         (u.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         (u.branch?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
-                         (u.staffTitle?.toLowerCase() || "").includes(searchQuery.toLowerCase());
-    const matchesRole = roleFilter === "all" || u.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
   
   return (
     <div>
@@ -251,7 +257,7 @@ function UsersTab() {
       {loading ? <p>Loading...</p> : (
         <>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredUsers.map((user) => (
+            {users.map((user) => (
               <div key={user._id} className="bg-white dark:bg-zinc-900 rounded-lg shadow border border-zinc-200 dark:border-zinc-700 p-5 flex flex-col gap-3">
                 <div className="flex items-start gap-3">
                   {user.avatarUrl && (

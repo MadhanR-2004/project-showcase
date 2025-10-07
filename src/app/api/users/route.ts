@@ -18,13 +18,36 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const limit = Number(searchParams.get("limit") ?? 1000);
     const skip = Number(searchParams.get("skip") ?? 0);
+    const search = searchParams.get("search") || "";
+    const role = searchParams.get("role") || "";
 
-    // Get total count
     const db = await getDb();
-    const total = await db.collection("users").countDocuments({});
+    
+    // Build query with search and role filter
+    const query: any = {};
+    
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: "i" } },
+        { email: { $regex: search, $options: "i" } },
+        { branch: { $regex: search, $options: "i" } },
+        { staffTitle: { $regex: search, $options: "i" } }
+      ];
+    }
+    
+    if (role && role !== "all") {
+      query.role = role;
+    }
 
-    // Get users with pagination
-    const users = await listUsers(limit, skip);
+    // Get total count with filters
+    const total = await db.collection("users").countDocuments(query);
+
+    // Get users with pagination and filters
+    const users = await db.collection("users")
+      .find(query)
+      .skip(skip)
+      .limit(limit)
+      .toArray();
     
     // Remove password hashes from response
     const sanitizedUsers = users.map(user => {

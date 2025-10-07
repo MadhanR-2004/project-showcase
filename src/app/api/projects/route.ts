@@ -8,30 +8,38 @@ export async function GET(req: NextRequest) {
   const limit = Number(searchParams.get("limit") ?? 24);
   const skip = Number(searchParams.get("skip") ?? 0);
   const contributorId = searchParams.get("contributorId");
-
-  // If contributorId is provided, filter directly in DB for associated projects
-  if (contributorId) {
-    const db = await getDb();
-    const query = { "contributors.id": contributorId, isPublished: { $ne: false } };
-    const total = await db.collection<Project>("projects").countDocuments(query);
-    const cursor = db
-      .collection<Project>("projects")
-      .find(query)
-      .sort({ createdAt: 1 })
-      .skip(skip)
-      .limit(limit);
-    const docs = await cursor.toArray();
-    return NextResponse.json({ 
-      projects: docs.map((d) => ({ ...d, _id: d._id?.toString?.() ?? d._id })),
-      total
-    });
-  }
+  const search = searchParams.get("search") || "";
 
   const db = await getDb();
-  const query = { isPublished: { $ne: false } };
+  
+  // Build query with search
+  const query: any = { isPublished: { $ne: false } };
+  
+  if (contributorId) {
+    query["contributors.id"] = contributorId;
+  }
+  
+  if (search) {
+    query.$or = [
+      { title: { $regex: search, $options: "i" } },
+      { shortDescription: { $regex: search, $options: "i" } },
+      { description: { $regex: search, $options: "i" } }
+    ];
+  }
+
   const total = await db.collection<Project>("projects").countDocuments(query);
-  const projects = await listProjects(limit, skip);
-  return NextResponse.json({ projects, total });
+  const cursor = db
+    .collection<Project>("projects")
+    .find(query)
+    .sort({ createdAt: 1 })
+    .skip(skip)
+    .limit(limit);
+  const docs = await cursor.toArray();
+  
+  return NextResponse.json({ 
+    projects: docs.map((d) => ({ ...d, _id: d._id?.toString?.() ?? d._id })),
+    total
+  });
 }
 
 export async function POST(req: NextRequest) {

@@ -25,13 +25,23 @@ export default function ProjectsPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const PAGE_SIZE = 24;
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     async function fetchProjects() {
       setLoading(true);
       try {
-        const res = await fetch(`/api/projects?limit=${PAGE_SIZE}&skip=${(page-1)*PAGE_SIZE}`);
+        const searchParam = debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : "";
+        const res = await fetch(`/api/projects?limit=${PAGE_SIZE}&skip=${(page-1)*PAGE_SIZE}${searchParam}`);
         if (!res.ok) {
           setProjects([]);
           setTotal(0);
@@ -49,18 +59,12 @@ export default function ProjectsPage() {
       }
     }
     fetchProjects();
-  }, [page]);
+  }, [page, debouncedSearch]);
 
   // Reset to page 1 when search query changes
   useEffect(() => {
     if (page !== 1) setPage(1);
-  }, [searchQuery]);
-
-  // Filter projects based on search query
-  const filteredProjects = projects.filter(p => 
-    (p.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.shortDescription?.toLowerCase() || "").includes(searchQuery.toLowerCase())
-  );
+  }, [debouncedSearch]);
 
   // Helper to extract YouTube ID
   function extractYouTubeId(input: string | undefined | null): string | null {
@@ -105,11 +109,10 @@ export default function ProjectsPage() {
       </div>
       
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-        {filteredProjects.map((p) => (
+        {projects.map((p) => (
           <Link key={p._id} href={`/projects/${p._id}`}>
             <BackgroundGradient className="rounded-[22px] p-6 bg-zinc-900">
-              <div className="flex items-center justify-center h-48">
-                {/* Video preview if available */}
+              <div className="flex items-center justify-center h-48">{/* Video preview if available */}
                 {(p.media && p.media.kind === "youtube" && p.media.url) ? (
                   (() => {
                     const videoId = extractYouTubeId(p.media.url);

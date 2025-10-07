@@ -16,13 +16,23 @@ export default function ProjectsAdminPage() {
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const PAGE_SIZE = 24;
+
+  // Debounce search query
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery.trim());
+    }, 1000);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
   useEffect(() => {
     (async () => {
       try {
+        const searchParam = debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : "";
         const res = await fetch(
-          `/api/projects?limit=${PAGE_SIZE}&skip=${(page - 1) * PAGE_SIZE}`
+          `/api/projects?limit=${PAGE_SIZE}&skip=${(page - 1) * PAGE_SIZE}${searchParam}`
         );
         if (!res.ok) {
           setItems([]);
@@ -37,17 +47,12 @@ export default function ProjectsAdminPage() {
         setTotal(0);
       }
     })();
-  }, [page]);
+  }, [page, debouncedSearch]);
 
   // Reset to page 1 when search query changes
   useEffect(() => {
     if (page !== 1) setPage(1);
-  }, [searchQuery]);
-
-  const filteredItems = items.filter(p =>
-    (p.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.shortDescription?.toLowerCase() || "").includes(searchQuery.toLowerCase())
-  );
+  }, [debouncedSearch]);
 
   return (
     <div className="min-h-screen p-6 max-w-3xl mx-auto">
@@ -70,7 +75,7 @@ export default function ProjectsAdminPage() {
       </div>
       
       <ul className="space-y-2 mt-4">
-        {filteredItems.map((p) => (
+        {items.map((p) => (
           <li
             key={p._id}
             className="flex items-center justify-between border rounded-md px-3 py-2"
