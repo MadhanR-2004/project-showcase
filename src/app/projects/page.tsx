@@ -32,7 +32,7 @@ export default function ProjectsPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
     setDebouncedSearch(searchQuery.trim());
-    }, 500);
+    }, 800);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 
