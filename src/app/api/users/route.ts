@@ -24,7 +24,17 @@ export async function GET(req: NextRequest) {
     const db = await getDb();
     
     // Build query with search and role filter
-    const query: any = {};
+    interface QueryFilter {
+      $or?: Array<{
+        name?: { $regex: string; $options: string };
+        email?: { $regex: string; $options: string };
+        branch?: { $regex: string; $options: string };
+        staffTitle?: { $regex: string; $options: string };
+      }>;
+      role?: string;
+    }
+    
+    const query: QueryFilter = {};
     
     if (search) {
       query.$or = [

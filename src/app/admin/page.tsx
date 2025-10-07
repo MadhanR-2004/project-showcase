@@ -82,8 +82,8 @@ function ProjectsTab() {
   // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery.trim());
-    }, 1000);
+    setDebouncedSearch(searchQuery.trim());
+    }, 800);
     return () => clearTimeout(timer);
   }, [searchQuery]);
   
@@ -196,8 +196,8 @@ function UsersTab() {
   // Debounce search query
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearch(searchQuery.trim());
-    }, 1000);
+    setDebouncedSearch(searchQuery.trim());
+    }, 800);
     return () => clearTimeout(timer);
   }, [searchQuery]);
   

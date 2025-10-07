@@ -13,7 +13,17 @@ export async function GET(req: NextRequest) {
   const db = await getDb();
   
   // Build query with search
-  const query: any = { isPublished: { $ne: false } };
+  interface QueryFilter {
+    isPublished: { $ne: boolean };
+    "contributors.id"?: string;
+    $or?: Array<{
+      title?: { $regex: string; $options: string };
+      shortDescription?: { $regex: string; $options: string };
+      description?: { $regex: string; $options: string };
+    }>;
+  }
+  
+  const query: QueryFilter = { isPublished: { $ne: false } };
   
   if (contributorId) {
     query["contributors.id"] = contributorId;
