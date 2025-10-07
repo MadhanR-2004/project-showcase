@@ -28,13 +28,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json();
-  // Backend validation
+  // Backend validation - dates, tech stack, and video links are now optional
   const required = [
     { key: 'title', label: 'Title' },
     { key: 'shortDescription', label: 'Short Description' },
     { key: 'description', label: 'Description' },
-    { key: 'startDate', label: 'Start Date' },
-    { key: 'endDate', label: 'End Date' },
     { key: 'poster', label: 'Poster Image' },
   ];
   for (const r of required) {
@@ -42,16 +40,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `${r.label} is required` }, { status: 400 });
     }
   }
-  if (!Array.isArray(body.techStack) || !body.techStack.length) {
-    return NextResponse.json({ error: 'At least one tech stack is required' }, { status: 400 });
-  }
   if (!Array.isArray(body.contributors) || !body.contributors.length) {
     return NextResponse.json({ error: 'At least one contributor is required' }, { status: 400 });
-  }
-  // Video link required
-  const hasVideo = (body.media && ((body.media.kind === 'youtube' && body.media.url) || (body.media.kind === 'gdrive' && body.media.url) || (body.media.kind === 'onedrive' && body.media.url)));
-  if (!hasVideo) {
-    return NextResponse.json({ error: 'At least one video link is required' }, { status: 400 });
   }
   if (!Array.isArray(body.showcasePhotos) || !body.showcasePhotos.length) {
     return NextResponse.json({ error: 'At least one showcase photo is required' }, { status: 400 });

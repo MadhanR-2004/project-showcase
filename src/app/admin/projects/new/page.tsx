@@ -243,11 +243,11 @@ export default function AdminCreateProject() {
     // Frontend validation
     if (!title.trim()) return setError("Title is required");
     if (!posterFile && !posterPreview && !posterUrl) return setError("Poster image is required (file or URL)");
-    if (!youtubeUrl.trim() && !gdriveUrl.trim() && !onedriveUrl.trim()) return setError("At least one project video is required");
+    // Video links are now optional
     if (!photos.some(p => p.file || p.preview || p.url)) return setError("At least one showcase image is required");
     if (!shortDescription.trim()) return setError("Short description is required");
     if (!description.trim()) return setError("Description is required");
-    if (!techStack.length) return setError("At least one tech stack is required");
+    // Tech stack and dates are now optional
     if (!selectedContribs.length || !selectedContribs.some(c => c.id || c.name)) return setError("At least one contributor is required");
     
     setSaving(true);
@@ -562,28 +562,26 @@ export default function AdminCreateProject() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Start Date <span className="text-red-600">*</span></label>
+            <label className="block text-sm font-medium mb-1">Start Date <span className="text-gray-400">(Optional)</span></label>
             <input
               type="date"
               className="w-full border rounded-md px-3 py-2"
               value={startDate}
               onChange={(e) => setStartDate(e.target.value)}
-              required
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">End Date <span className="text-red-600">*</span></label>
+            <label className="block text-sm font-medium mb-1">End Date <span className="text-gray-400">(Optional)</span></label>
             <input
               type="date"
               className="w-full border rounded-md px-3 py-2"
               value={endDate}
               onChange={(e) => setEndDate(e.target.value)}
-              required
             />
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Tech Stack <span className="text-red-600">*</span></label>
+          <label className="block text-sm font-medium mb-1">Tech Stack <span className="text-gray-400">(Optional)</span></label>
           <div className="flex gap-2 mb-2">
             <input
               className="border rounded-md px-3 py-2 flex-1"
@@ -611,7 +609,7 @@ export default function AdminCreateProject() {
         </div>
         {/* Poster image file input handled above, remove legacy input */}
         <div>
-          <label className="block text-sm font-medium mb-1">Project Video Links <span className="text-red-600">*</span></label>
+          <label className="block text-sm font-medium mb-1">Project Video Links <span className="text-gray-400">(Optional)</span></label>
           <input
             className="w-full border rounded-md px-3 py-2 mb-2"
             placeholder="YouTube video link"

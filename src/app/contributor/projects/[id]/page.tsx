@@ -30,6 +30,8 @@ export default function EditProjectPage() {
   const [title, setTitle] = useState("");
   const [shortDescription, setShortDescription] = useState("");
   const [description, setDescription] = useState("");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
   const [techStack, setTechStack] = useState<string[]>([]);
   const [techInput, setTechInput] = useState("");
   
@@ -157,6 +159,8 @@ export default function EditProjectPage() {
         setTitle(data.title || "");
         setShortDescription(data.shortDescription || "");
         setDescription(data.description || "");
+        setStartDate(data.startDate || "");
+        setEndDate(data.endDate || "");
         setTechStack(data.techStack || []);
         
         // Set existing poster
@@ -350,14 +354,12 @@ export default function EditProjectPage() {
     e.preventDefault();
     setError(null);
     
-    // Frontend validation
+    // Frontend validation - tech stack and video links are now optional
     if (!title.trim()) return setError("Title is required");
     if (!posterPreview && !posterFile && !posterUrl) return setError("Poster image is required");
-    if (!youtubeUrl.trim() && !gdriveUrl.trim() && !onedriveUrl.trim()) return setError("At least one project video is required");
     if (!photos.some(p => (p.preview && !p.removed) || p.file || p.url)) return setError("At least one showcase image is required");
     if (!shortDescription.trim()) return setError("Short description is required");
     if (!description.trim()) return setError("Description is required");
-    if (!techStack.length) return setError("At least one tech stack is required");
     if (!selectedContribs.length || !selectedContribs.some(c => c.id || c.name)) return setError("At least one contributor is required");
     
     setSaving(true);
@@ -459,6 +461,8 @@ export default function EditProjectPage() {
         title,
         shortDescription,
         description,
+        startDate,
+        endDate,
         techStack,
         poster: posterUrlFinal || undefined,
         thumbnail: thumbnailUrlFinal || undefined,
@@ -545,6 +549,26 @@ export default function EditProjectPage() {
         <div>
           <label className="block text-sm font-medium mb-1">Description <span className="text-red-600">*</span></label>
           <textarea className="w-full border rounded-md px-3 py-2 min-h-[100px]" value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Enter project description (plain text)" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Start Date <span className="text-gray-400">(Optional)</span></label>
+            <input
+              type="date"
+              className="w-full border rounded-md px-3 py-2"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">End Date <span className="text-gray-400">(Optional)</span></label>
+            <input
+              type="date"
+              className="w-full border rounded-md px-3 py-2"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+            />
+          </div>
         </div>
         <div>
           <label className="block text-sm font-medium mb-1">Poster Image <span className="text-red-600">*</span></label>
@@ -669,7 +693,7 @@ export default function EditProjectPage() {
           </div>
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Project Video Links <span className="text-red-600">*</span></label>
+          <label className="block text-sm font-medium mb-1">Project Video Links <span className="text-gray-400">(Optional)</span></label>
           <input
             className="w-full border rounded-md px-3 py-2 mb-2"
             placeholder="YouTube video link"
@@ -727,7 +751,7 @@ export default function EditProjectPage() {
           ) : null}
         </div>
         <div>
-          <label className="block text-sm font-medium mb-1">Tech Stack <span className="text-red-600">*</span></label>
+          <label className="block text-sm font-medium mb-1">Tech Stack <span className="text-gray-400">(Optional)</span></label>
           <div className="flex gap-2 mb-2">
             <input
               className="border rounded-md px-3 py-2 flex-1"
