@@ -23,7 +23,7 @@ export default function ProjectsAdminPage() {
   useEffect(() => {
     const timer = setTimeout(() => {
     setDebouncedSearch(searchQuery.trim());
-    }, 800);
+    }, 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
 

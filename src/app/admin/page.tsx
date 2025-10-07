@@ -83,7 +83,7 @@ function ProjectsTab() {
   useEffect(() => {
     const timer = setTimeout(() => {
     setDebouncedSearch(searchQuery.trim());
-    }, 800);
+    }, 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
   
@@ -197,7 +197,7 @@ function UsersTab() {
   useEffect(() => {
     const timer = setTimeout(() => {
     setDebouncedSearch(searchQuery.trim());
-    }, 800);
+    }, 500);
     return () => clearTimeout(timer);
   }, [searchQuery]);
   
