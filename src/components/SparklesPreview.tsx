@@ -2,10 +2,26 @@
 import React from "react";
 import { SparklesCore } from "../components/ui/sparkles";
 import Link from "next/link";
+import Image from "next/image";
 import {TextGenerateEffect} from "../components/ui/text-generate-effect";
 export function SparklesPreview() {
   return (
     <div className="h-screen w-full bg-black flex flex-col items-center justify-center overflow-hidden relative">
+      {/* Logo in top left corner */}
+      <div className="absolute top-4 left-4 z-30">
+        <Link href="/">
+          <Image
+            src="/sona_logo.jpg"
+            alt="Logo"
+            width={180}
+            height={40}
+            className="cursor-pointer hover:opacity-80 transition-opacity"
+            priority
+          />
+        </Link>
+      </div>
+      
+      {/* Login button in top right corner */}
       <div className="absolute top-4 right-4 z-30 flex items-center gap-2">
         <Link
           href="/login"
