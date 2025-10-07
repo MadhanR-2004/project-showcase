@@ -73,50 +73,89 @@ type Project = {
 function ProjectsTab() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const PAGE_SIZE = 12;
+  
   useEffect(() => {
     (async () => {
-      const res = await fetch("/api/projects");
+      setLoading(true);
+      const res = await fetch(`/api/projects?limit=${PAGE_SIZE}&skip=${(page-1)*PAGE_SIZE}`);
       const data = await res.json();
       setProjects(data.projects || []);
+      setTotal(data.total ?? (data.projects?.length || 0));
       setLoading(false);
     })();
-  }, []);
+  }, [page]);
+  
+  const filteredProjects = projects.filter(p => 
+    (p.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (p.shortDescription?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+    (p.techStack || []).some(t => (t || "").toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+  
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 gap-3">
         <h2 className="text-xl font-semibold">Projects</h2>
-  <Link href="/admin/projects/new" className="rounded-md bg-blue-600 text-white px-4 py-2 font-semibold">+ Add Project</Link>
+        <div className="flex gap-2 items-center flex-1 max-w-md">
+          <input
+            type="text"
+            placeholder="Search projects..."
+            className="flex-1 border rounded-md px-3 py-2 text-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+        <Link href="/admin/projects/new" className="rounded-md bg-blue-600 text-white px-4 py-2 font-semibold whitespace-nowrap">+ Add Project</Link>
       </div>
       {loading ? <p>Loading...</p> : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {projects.map((p) => (
-            <div key={p._id} className="bg-white dark:bg-zinc-900 rounded-lg shadow border border-zinc-200 dark:border-zinc-700 p-5 flex flex-col gap-3">
-              <div className="flex-1">
-                <h3 className="text-lg font-bold mb-1">{p.title}</h3>
-                <p className="text-xs text-zinc-500 mb-2">ID: {p._id}</p>
-                {p.shortDescription && <p className="text-sm mb-2">{p.shortDescription}</p>}
-                {p.techStack && p.techStack.length > 0 && (
-                  <div className="mb-2">
-                    <span className="text-xs text-zinc-500">Tech Stack: </span>
-                    {p.techStack.map((t, i) => (
-                      <span key={i} className="inline-block bg-zinc-200 dark:bg-zinc-700 rounded px-2 py-0.5 text-xs">{t}</span>
-                    ))}
-                  </div>
-                )}
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredProjects.map((p) => (
+              <div key={p._id} className="bg-white dark:bg-zinc-900 rounded-lg shadow border border-zinc-200 dark:border-zinc-700 p-5 flex flex-col gap-3">
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold mb-1">{p.title}</h3>
+                  <p className="text-xs text-zinc-500 mb-2">ID: {p._id}</p>
+                  {p.shortDescription && <p className="text-sm mb-2">{p.shortDescription}</p>}
+                  {p.techStack && p.techStack.length > 0 && (
+                    <div className="mb-2">
+                      <span className="text-xs text-zinc-500">Tech Stack: </span>
+                      {p.techStack.map((t, i) => (
+                        <span key={i} className="inline-block bg-zinc-200 dark:bg-zinc-700 rounded px-2 py-0.5 text-xs mr-1">{t}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-2 mt-2">
+                  <Link href={`/projects/${p._id}`} className="rounded bg-zinc-100 dark:bg-zinc-800 px-3 py-1 text-xs font-semibold">View</Link>
+                  <Link href={`/admin/projects/${p._id}`} className="rounded bg-blue-100 text-blue-700 px-3 py-1 text-xs font-semibold">Edit</Link>
+                  <button className="rounded bg-red-100 text-red-700 px-3 py-1 text-xs font-semibold" onClick={async () => {
+                    if (confirm("Delete this project?")) {
+                      await fetch(`/api/projects/${p._id}`, { method: "DELETE" });
+                      setProjects(projects.filter(pr => pr._id !== p._id));
+                    }
+                  }}>Delete</button>
+                </div>
               </div>
-              <div className="flex gap-2 mt-2">
-                <Link href={`/projects/${p._id}`} className="rounded bg-zinc-100 dark:bg-zinc-800 px-3 py-1 text-xs font-semibold">View</Link>
-                <Link href={`/admin/projects/${p._id}`} className="rounded bg-blue-100 text-blue-700 px-3 py-1 text-xs font-semibold">Edit</Link>
-                <button className="rounded bg-red-100 text-red-700 px-3 py-1 text-xs font-semibold" onClick={async () => {
-                  if (confirm("Delete this project?")) {
-                    await fetch(`/api/projects/${p._id}`, { method: "DELETE" });
-                    setProjects(projects.filter(pr => pr._id !== p._id));
-                  }
-                }}>Delete</button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          {/* Pagination Controls */}
+          <div className="flex justify-center items-center gap-2 mt-8">
+            <button
+              className="px-3 py-1 rounded bg-zinc-800 text-white disabled:opacity-50"
+              onClick={() => setPage(page-1)}
+              disabled={page === 1}
+            >Prev</button>
+            <span className="px-3">Page {page} of {Math.max(1, Math.ceil(total/PAGE_SIZE))}</span>
+            <button
+              className="px-3 py-1 rounded bg-zinc-800 text-white disabled:opacity-50"
+              onClick={() => setPage(page+1)}
+              disabled={page >= Math.ceil(total/PAGE_SIZE)}
+            >Next</button>
+          </div>
+        </>
       )}
     </div>
   );
@@ -138,15 +177,22 @@ type Contributor = {
 function UsersTab() {
   const [users, setUsers] = useState<Contributor[]>([]);
   const [loading, setLoading] = useState(true);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
+  const PAGE_SIZE = 12;
   
   useEffect(() => {
     (async () => {
-      const res = await fetch("/api/users");
+      setLoading(true);
+      const res = await fetch(`/api/users?limit=${PAGE_SIZE}&skip=${(page-1)*PAGE_SIZE}`);
       const data = await res.json();
       setUsers(data.users || []);
+      setTotal(data.total ?? (data.users?.length || 0));
       setLoading(false);
     })();
-  }, []);
+  }, [page]);
   
   const getRoleBadgeColor = (role: string) => {
     switch(role) {
@@ -157,82 +203,126 @@ function UsersTab() {
     }
   };
   
+  const filteredUsers = users.filter(u => {
+    const matchesSearch = (u.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (u.email || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         (u.branch?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+                         (u.staffTitle?.toLowerCase() || "").includes(searchQuery.toLowerCase());
+    const matchesRole = roleFilter === "all" || u.role === roleFilter;
+    return matchesSearch && matchesRole;
+  });
+  
   return (
     <div>
-      <div className="flex justify-between items-center mb-4">
+      <div className="flex justify-between items-center mb-4 gap-3 flex-wrap">
         <h2 className="text-xl font-semibold">All Users</h2>
-        <Link href="/admin/users/new" className="rounded-md bg-blue-600 text-white px-4 py-2 font-semibold">+ Create User</Link>
+        <div className="flex gap-2 items-center flex-1 max-w-md">
+          <input
+            type="text"
+            placeholder="Search users..."
+            className="flex-1 border rounded-md px-3 py-2 text-sm"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <select
+            className="border rounded-md px-3 py-2 text-sm"
+            value={roleFilter}
+            onChange={(e) => setRoleFilter(e.target.value)}
+          >
+            <option value="all">All Roles</option>
+            <option value="admin">Admin</option>
+            <option value="contributor">Contributor</option>
+            <option value="both">Both</option>
+          </select>
+        </div>
+        <Link href="/admin/users/new" className="rounded-md bg-blue-600 text-white px-4 py-2 font-semibold whitespace-nowrap">+ Create User</Link>
       </div>
       
       {loading ? <p>Loading...</p> : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {users.map((user) => (
-            <div key={user._id} className="bg-white dark:bg-zinc-900 rounded-lg shadow border border-zinc-200 dark:border-zinc-700 p-5 flex flex-col gap-3">
-              <div className="flex items-start gap-3">
-                {user.avatarUrl && (
-                  <Image 
-                    src={user.avatarUrl} 
-                    alt={user.name} 
-                    width={48} 
-                    height={48} 
-                    className="w-12 h-12 rounded-full object-cover flex-shrink-0" 
-                  />
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            {filteredUsers.map((user) => (
+              <div key={user._id} className="bg-white dark:bg-zinc-900 rounded-lg shadow border border-zinc-200 dark:border-zinc-700 p-5 flex flex-col gap-3">
+                <div className="flex items-start gap-3">
+                  {user.avatarUrl && (
+                    <Image 
+                      src={user.avatarUrl} 
+                      alt={user.name} 
+                      width={48} 
+                      height={48} 
+                      className="w-12 h-12 rounded-full object-cover flex-shrink-0" 
+                    />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-lg font-bold mb-1 truncate">{user.name}</h3>
+                    <p className="text-xs text-zinc-500 mb-2 truncate">{user.email}</p>
+                    <span className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${getRoleBadgeColor(user.role)}`}>
+                      {user.role.toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+                
+                {(user.role === "contributor" || user.role === "both") && (
+                  <div className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1 border-t pt-2">
+                    {user.contributorType && (
+                      <p><span className="font-semibold">Type:</span> {user.contributorType}</p>
+                    )}
+                    {user.contributorType === "student" && (
+                      <>
+                        {user.branch && <p><span className="font-semibold">Branch:</span> {user.branch}</p>}
+                        {user.yearOfPassing && <p><span className="font-semibold">Year:</span> {user.yearOfPassing}</p>}
+                      </>
+                    )}
+                    {user.contributorType === "staff" && user.staffTitle && (
+                      <p><span className="font-semibold">Title:</span> {user.staffTitle}</p>
+                    )}
+                    {user.profileUrl && (
+                      <p>
+                        <span className="font-semibold">Profile:</span>{" "}
+                        <a href={user.profileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                          View
+                        </a>
+                      </p>
+                    )}
+                  </div>
                 )}
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-lg font-bold mb-1 truncate">{user.name}</h3>
-                  <p className="text-xs text-zinc-500 mb-2 truncate">{user.email}</p>
-                  <span className={`inline-block rounded px-2 py-0.5 text-xs font-semibold ${getRoleBadgeColor(user.role)}`}>
-                    {user.role.toUpperCase()}
-                  </span>
-                </div>
-              </div>
-              
-              {(user.role === "contributor" || user.role === "both") && (
-                <div className="text-xs text-zinc-600 dark:text-zinc-400 space-y-1 border-t pt-2">
-                  {user.contributorType && (
-                    <p><span className="font-semibold">Type:</span> {user.contributorType}</p>
-                  )}
-                  {user.contributorType === "student" && (
-                    <>
-                      {user.branch && <p><span className="font-semibold">Branch:</span> {user.branch}</p>}
-                      {user.yearOfPassing && <p><span className="font-semibold">Year:</span> {user.yearOfPassing}</p>}
-                    </>
-                  )}
-                  {user.contributorType === "staff" && user.staffTitle && (
-                    <p><span className="font-semibold">Title:</span> {user.staffTitle}</p>
-                  )}
-                  {user.profileUrl && (
-                    <p>
-                      <span className="font-semibold">Profile:</span>{" "}
-                      <a href={user.profileUrl} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-                        View
-                      </a>
-                    </p>
-                  )}
-                </div>
-              )}
-              
-              <div className="flex gap-2 mt-2 border-t pt-2">
-                <Link href={`/admin/users/${user._id}`} className="flex-1 text-center rounded bg-blue-100 text-blue-700 px-3 py-1 text-xs font-semibold">
-                  Edit
-                </Link>
-                <button 
-                  className="flex-1 rounded bg-red-100 text-red-700 px-3 py-1 text-xs font-semibold" 
-                  onClick={async () => {
-                    if (confirm(`Delete user ${user.name}?`)) {
-                      const res = await fetch(`/api/users/${user._id}`, { method: "DELETE" });
-                      if (res.ok) {
-                        setUsers(users.filter(u => u._id !== user._id));
+                
+                <div className="flex gap-2 mt-2 border-t pt-2">
+                  <Link href={`/admin/users/${user._id}`} className="flex-1 text-center rounded bg-blue-100 text-blue-700 px-3 py-1 text-xs font-semibold">
+                    Edit
+                  </Link>
+                  <button 
+                    className="flex-1 rounded bg-red-100 text-red-700 px-3 py-1 text-xs font-semibold" 
+                    onClick={async () => {
+                      if (confirm(`Delete user ${user.name}?`)) {
+                        const res = await fetch(`/api/users/${user._id}`, { method: "DELETE" });
+                        if (res.ok) {
+                          setUsers(users.filter(u => u._id !== user._id));
+                        }
                       }
-                    }
-                  }}
-                >
-                  Delete
-                </button>
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+          {/* Pagination Controls */}
+          <div className="flex justify-center items-center gap-2 mt-8">
+            <button
+              className="px-3 py-1 rounded bg-zinc-800 text-white disabled:opacity-50"
+              onClick={() => setPage(page-1)}
+              disabled={page === 1}
+            >Prev</button>
+            <span className="px-3">Page {page} of {Math.max(1, Math.ceil(total/PAGE_SIZE))}</span>
+            <button
+              className="px-3 py-1 rounded bg-zinc-800 text-white disabled:opacity-50"
+              onClick={() => setPage(page+1)}
+              disabled={page >= Math.ceil(total/PAGE_SIZE)}
+            >Next</button>
+          </div>
+        </>
       )}
     </div>
   );

@@ -13,29 +13,63 @@ type Project = {
 
 export default function ProjectsAdminPage() {
   const [items, setItems] = useState<Project[]>([]);
+  const [page, setPage] = useState(1);
+  const [total, setTotal] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const PAGE_SIZE = 24;
+
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch("/api/projects");
+        const res = await fetch(
+          `/api/projects?limit=${PAGE_SIZE}&skip=${(page - 1) * PAGE_SIZE}`
+        );
         if (!res.ok) {
           setItems([]);
+          setTotal(0);
           return;
         }
         const data = await res.json();
         setItems(data.projects || []);
+        setTotal(data.total ?? (data.projects?.length || 0));
       } catch {
-          setItems([]);
+        setItems([]);
+        setTotal(0);
       }
     })();
-  }, []);
+  }, [page]);
+
+  const filteredItems = items.filter(p =>
+    (p.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (p.shortDescription?.toLowerCase() || "").includes(searchQuery.toLowerCase())
+  );
 
   return (
     <div className="min-h-screen p-6 max-w-3xl mx-auto">
       <h1 className="text-2xl font-semibold mb-6">Projects</h1>
-      <Link href="/admin/projects/new" className="mb-4 inline-block underline text-blue-600">Add New Project</Link>
+      
+      <div className="flex gap-3 mb-4">
+        <input
+          type="text"
+          placeholder="Search projects..."
+          className="flex-1 border rounded-md px-3 py-2 text-sm"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+        />
+        <Link
+          href="/admin/projects/new"
+          className="rounded-md bg-blue-600 text-white px-4 py-2 font-semibold whitespace-nowrap"
+        >
+          Add New Project
+        </Link>
+      </div>
+      
       <ul className="space-y-2 mt-4">
-        {items.map((p) => (
-          <li key={p._id} className="flex items-center justify-between border rounded-md px-3 py-2">
+        {filteredItems.map((p) => (
+          <li
+            key={p._id}
+            className="flex items-center justify-between border rounded-md px-3 py-2"
+          >
             <span>{p.title}</span>
             <div className="flex gap-2">
               <Link className="underline text-blue-600" href={`/admin/projects/${p.slug}`}>Edit</Link>
@@ -44,6 +78,26 @@ export default function ProjectsAdminPage() {
           </li>
         ))}
       </ul>
+      {/* Pagination Controls */}
+      <div className="flex justify-center items-center gap-2 mt-10">
+        <button
+          className="px-3 py-1 rounded bg-zinc-800 text-white disabled:opacity-50"
+          onClick={() => setPage(page - 1)}
+          disabled={page === 1}
+        >
+          Prev
+        </button>
+        <span className="px-3">
+          Page {page} of {Math.max(1, Math.ceil(total / PAGE_SIZE))}
+        </span>
+        <button
+          className="px-3 py-1 rounded bg-zinc-800 text-white disabled:opacity-50"
+          onClick={() => setPage(page + 1)}
+          disabled={page >= Math.ceil(total / PAGE_SIZE)}
+        >
+          Next
+        </button>
+      </div>
     </div>
   );
 }

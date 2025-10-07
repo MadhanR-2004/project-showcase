@@ -12,18 +12,26 @@ export async function GET(req: NextRequest) {
   // If contributorId is provided, filter directly in DB for associated projects
   if (contributorId) {
     const db = await getDb();
+    const query = { "contributors.id": contributorId, isPublished: { $ne: false } };
+    const total = await db.collection<Project>("projects").countDocuments(query);
     const cursor = db
       .collection<Project>("projects")
-      .find({ "contributors.id": contributorId, isPublished: { $ne: false } })
+      .find(query)
       .sort({ createdAt: 1 })
       .skip(skip)
       .limit(limit);
     const docs = await cursor.toArray();
-    return NextResponse.json({ projects: docs.map((d) => ({ ...d, _id: d._id?.toString?.() ?? d._id })) });
+    return NextResponse.json({ 
+      projects: docs.map((d) => ({ ...d, _id: d._id?.toString?.() ?? d._id })),
+      total
+    });
   }
 
+  const db = await getDb();
+  const query = { isPublished: { $ne: false } };
+  const total = await db.collection<Project>("projects").countDocuments(query);
   const projects = await listProjects(limit, skip);
-  return NextResponse.json({ projects });
+  return NextResponse.json({ projects, total });
 }
 
 export async function POST(req: NextRequest) {

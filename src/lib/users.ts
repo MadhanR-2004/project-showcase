@@ -193,12 +193,14 @@ export async function listContributors(): Promise<UserDoc[]> {
   return users.map(serialize);
 }
 
-// List all users (regardless of role)
-export async function listUsers(): Promise<UserDoc[]> {
+// List all users (regardless of role) with pagination support
+export async function listUsers(limit = 1000, skip = 0): Promise<UserDoc[]> {
   const db = await getDb();
   const users = await db.collection<UserDoc>(COLLECTION)
     .find({})
     .sort({ createdAt: -1 })
+    .skip(skip)
+    .limit(limit)
     .toArray();
   return users.map(serialize);
 }
