@@ -51,6 +51,11 @@ export default function ProjectsPage() {
     fetchProjects();
   }, [page]);
 
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    if (page !== 1) setPage(1);
+  }, [searchQuery]);
+
   // Filter projects based on search query
   const filteredProjects = projects.filter(p => 
     (p.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||

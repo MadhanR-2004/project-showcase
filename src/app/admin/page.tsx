@@ -89,6 +89,11 @@ function ProjectsTab() {
     })();
   }, [page]);
   
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    if (page !== 1) setPage(1);
+  }, [searchQuery]);
+  
   const filteredProjects = projects.filter(p => 
     (p.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (p.shortDescription?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
@@ -193,6 +198,11 @@ function UsersTab() {
       setLoading(false);
     })();
   }, [page]);
+  
+  // Reset to page 1 when search query or role filter changes
+  useEffect(() => {
+    if (page !== 1) setPage(1);
+  }, [searchQuery, roleFilter]);
   
   const getRoleBadgeColor = (role: string) => {
     switch(role) {

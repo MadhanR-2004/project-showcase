@@ -39,6 +39,11 @@ export default function ProjectsAdminPage() {
     })();
   }, [page]);
 
+  // Reset to page 1 when search query changes
+  useEffect(() => {
+    if (page !== 1) setPage(1);
+  }, [searchQuery]);
+
   const filteredItems = items.filter(p =>
     (p.title || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
     (p.shortDescription?.toLowerCase() || "").includes(searchQuery.toLowerCase())
